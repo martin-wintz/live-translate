@@ -1,0 +1,54 @@
+# General
+*.log
+*.env
+*.pyc
+__pycache__/
+db.sqlite3
+db.sqlite3-journal
+.DS_Store
+.idea/
+.vscode/
+
+# Flask-specific
+server/instance/
+server/*.pyc
+server/__pycache__/
+server/*.pyo
+server/*.pyd
+server/.Python
+server/env
+server/venv
+server/ENV
+server/env.bak
+server/venv.bak
+server/*.db
+server/*.sqlite
+
+# React-specific
+client/node_modules/
+client/.env.local
+client/.env.development.local
+client/.env.test.local
+client/.env.production.local
+client/npm-debug.log*
+client/yarn-debug.log*
+client/yarn-error.log*
+client/package-lock.json
+client/yarn.lock
+client/build/
+
+# macOS specific
+.DS_Store
+
+# Windows specific
+Thumbs.db
+Desktop.ini
+
+# Linux specific
+*~
+
+# JetBrains IDEs
+.idea/
+
+# Visual Studio Code
+.vscode/
