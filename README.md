@@ -1,6 +1,5 @@
 ## Server
 
-
 Set up:
 
 ```shell
