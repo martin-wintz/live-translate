@@ -23,6 +23,7 @@ server/env.bak
 server/venv.bak
 server/*.db
 server/*.sqlite
+server/audio/*
 
 # React-specific
 client/node_modules/
