@@ -38,12 +38,12 @@ function App() {
 
   const startRecording = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const recorder = new MediaRecorder(stream);
+    const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
     setMediaRecorder(recorder);
   
     initializeNewRecording();
   
-    recorder.start(1000);
+    recorder.start(2000);
   
     // Event listener for when an audio chunk is available
     recorder.ondataavailable = async (e) => {
