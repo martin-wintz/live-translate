@@ -1,4 +1,5 @@
-from flask import Flask, send_from_directory, request
+import uuid
+from flask import Flask, send_from_directory, request, session
 from flask_socketio import SocketIO, join_room
 from flask_cors import CORS
 import os
@@ -45,7 +46,7 @@ def transcription_callback(text):
 @app.route('/start_recording', methods=['POST'])
 def start_recording():
     global transcription
-    transcription = TranscriptionManager(request.json['clientId'], transcription_callback)
+    transcription = TranscriptionManager(session['client_id'], transcription_callback)
     thread = threading.Thread(target=transcription.start_process_audio_queue, args=(audio_queue,))
     thread.start()
     return {'status': 'success'}
@@ -57,6 +58,14 @@ def stop_recording():
         transcription.stop_process_audio_queue()
         transcription = None
     return {'status': 'success'}
+
+@app.route('/init_session', methods=['POST'])
+def init_session():
+    # Generate a random client id and store it in the session
+    if 'client_id' not in session:
+        session['client_id'] = str(uuid.uuid4())
+        print(f"********** Client id created: {session['client_id']}")
+    return {'client_id': session['client_id']}
 
 @app.route('/')
 def index():

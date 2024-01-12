@@ -8,8 +8,9 @@ import whisper
 import webrtcvad
 import wave
 
-model = whisper.load_model('base.en')
-cheap_model = whisper.load_model('tiny.en')
+# model = whisper.load_model('base') # CUDA
+model = whisper.load_model('tiny') # CPU
+cheap_model = whisper.load_model('tiny')
 
 # TODO: Automatically detect if GPU is available
 use_fp16 = True
@@ -53,12 +54,20 @@ class TranscriptionManager:
         self.processing_audio_queue = False
         self.phrases = [Phrase(client_id)]
         self.transcription_callback = transcription_callback
+        self.audio_queue_timeout = 60 # seconds
+        self.audio_queue_time_without_audio = 0 # seconds
 
     def current_phrase(self):
         return self.phrases[-1]
 
     def stop_transcription(self):
-        # TODO: Clean up
+        self.stop_process_audio_queue()
+
+        # clean up audio files
+        for phrase in self.phrases:
+            os.remove(phrase.audio_file_path_wav)
+            os.remove(phrase.audio_file_path_webm)
+
         return
 
     """Appends the audio_data (webm, 16khz) to the current phrase file,
@@ -101,17 +110,20 @@ class TranscriptionManager:
     # Start processing the audio queue. Intended to be run continuously in a separate thread.
     def start_process_audio_queue(self, audio_queue):
         self.processing_audio_queue = True
-        while self.processing_audio_queue:
+        while self.processing_audio_queue and self.audio_queue_time_without_audio < self.audio_queue_timeout:
             if not audio_queue.is_empty():
+                self.audio_queue_time_without_audio = 0
                 audio_data = audio_queue.get_audio()
                 self.append_audio(audio_data)
                 print('Processed audio')
             else:
+                self.audio_queue_time_without_audio += 0.1
                 time.sleep(0.1)
+        self.stop_process_audio_queue()
 
     def stop_process_audio_queue(self):
         self.processing_audio_queue = False
-
+        self.audio_queue_time_without_audio = 0
 
 class TranscriptionAudioQueue:
     def __init__(self):
