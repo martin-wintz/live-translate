@@ -11,8 +11,10 @@ from pydub import AudioSegment
 
 app = Flask(__name__, static_folder='../app/build')
 app.config['SECRET_KEY'] = 'secret!'
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = False # Dev only
 socketio = SocketIO(app, cors_allowed_origins=["http://localhost:3000"])
-CORS(app)
+CORS(app, supports_credentials=True)
 
 if not os.path.exists('audio'):
     os.makedirs('audio')
@@ -64,7 +66,6 @@ def init_session():
     # Generate a random client id and store it in the session
     if 'client_id' not in session:
         session['client_id'] = str(uuid.uuid4())
-        print(f"********** Client id created: {session['client_id']}")
     return {'client_id': session['client_id']}
 
 @app.route('/')

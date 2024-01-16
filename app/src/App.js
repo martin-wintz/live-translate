@@ -4,14 +4,13 @@ import axios from 'axios'; // assuming you're using axios for HTTP requests
 
 const socket = io('http://localhost:5555');
 
+axios.defaults.withCredentials = true;
 axios.post('http://localhost:5555/init_session');
 
 function App() {
   const [recording, setRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [transcription, setTranscription] = useState('');
-  
-  let silenceTimer = null;
 
 
   useEffect(() => {
