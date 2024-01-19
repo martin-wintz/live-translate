@@ -6,7 +6,7 @@ import os
 from pydub import AudioSegment
 from queue import Queue
 import threading
-from transcription import TranscriptionManager, TranscriptionAudioQueue
+from transcription import TranscriptionManager, TranscriptionProcessor, TranscriptionAudioQueue
 from pydub import AudioSegment
 
 app = Flask(__name__, static_folder='../app/build')
@@ -20,7 +20,7 @@ if not os.path.exists('audio'):
     os.makedirs('audio')
 
 transcription = None
-audio_queue = TranscriptionAudioQueue()
+transcription_manager = TranscriptionManager()
 
 # ----------------- Socket.io -----------------
 @socketio.on('connect')
@@ -31,15 +31,20 @@ def handle_connect():
 @socketio.on('disconnect')
 def handle_disconnect():
     client_id = request.sid
-    global transcription
-    if transcription is not None:
-        transcription.stop_process_audio_queue()
-        transcription = None
     print(f'Client disconnected: {client_id}')
 
 @socketio.on('audio_chunk')
 def handle_audio_chunk(data):
-    audio_queue.add_audio(data)
+    client_id = data['clientId']
+    audio_data = data['arrayBuffer']
+
+    processor = transcription_manager.get_processor(client_id)
+    if processor:
+        processor.queue_audio(audio_data)
+    else:
+        print(f'No processor found for client {client_id}')
+        pass
+
 
 def transcription_callback(text):
     socketio.emit('transcription', text)
@@ -47,18 +52,17 @@ def transcription_callback(text):
 # ----------------- API -----------------
 @app.route('/start_recording', methods=['POST'])
 def start_recording():
-    global transcription
-    transcription = TranscriptionManager(session['client_id'], transcription_callback)
-    thread = threading.Thread(target=transcription.start_process_audio_queue, args=(audio_queue,))
-    thread.start()
+    processor = TranscriptionProcessor(session['client_id'], transcription_callback)
+    processor.start_process_audio_queue()
+    transcription_manager.set_processor(session['client_id'], processor)
     return {'status': 'success'}
 
 @app.route('/stop_recording', methods=['POST'])
 def stop_recording():
-    global transcription
-    if transcription is not None:
-        transcription.stop_process_audio_queue()
-        transcription = None
+    processor = transcription_manager.get_processor(session['client_id'])
+    if processor is not None:
+        processor.stop_process_audio_queue()
+        processor = None
     return {'status': 'success'}
 
 @app.route('/init_session', methods=['POST'])

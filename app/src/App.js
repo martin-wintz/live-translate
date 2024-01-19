@@ -5,36 +5,42 @@ import axios from 'axios'; // assuming you're using axios for HTTP requests
 const socket = io('http://localhost:5555');
 
 axios.defaults.withCredentials = true;
-axios.post('http://localhost:5555/init_session');
 
 function App() {
   const [recording, setRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [transcription, setTranscription] = useState('');
-
-
+  const [clientId, setClientId] = useState('');
+  
   useEffect(() => {
-    socket.on('connect', () => {
-      console.log('Connected to server');
-    });
+    const initializeSession = async () => {
+      const response = await axios.post('http://localhost:5555/init_session');
+      setClientId(response.data.client_id);
 
-    socket.on('transcription', (transcription) => {
-      setTranscription(transcription);
-    });
+      socket.on('connect', () => {
+        console.log('Connected to server');
+      });
 
-    return () => {
-      socket.off('connect');
+      socket.on('transcription', (transcription) => {
+        setTranscription(transcription);
+      });
+
+      return () => {
+        socket.off('connect');
+      };
     };
+    
+    initializeSession();
   }, []);
 
   const initializeNewRecording = () => {
     // Call backend to initialize audio file
-    return axios.post('http://localhost:5555/start_recording', { clientId: socket.id });
+    return axios.post('http://localhost:5555/start_recording');
   }
 
   const closeRecording = () => {
     // Call backend to close audio file
-    return axios.post('http://localhost:5555/stop_recording', { clientId: socket.id });
+    return axios.post('http://localhost:5555/stop_recording');
   }
 
   const startRecording = async () => {
@@ -44,14 +50,17 @@ function App() {
   
     initializeNewRecording();
   
-    recorder.start(2000);
+    recorder.start(1000);
   
     // Event listener for when an audio chunk is available
     recorder.ondataavailable = async (e) => {
       // Convert the audio chunk to an ArrayBuffer and send it via WebSocket
       const data = e.data;
       data.arrayBuffer().then(arrayBuffer => {
-        socket.emit('audio_chunk', arrayBuffer);
+        socket.emit('audio_chunk', {
+          clientId,
+          arrayBuffer
+          });
       });
     };
   
