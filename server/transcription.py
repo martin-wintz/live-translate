@@ -28,20 +28,22 @@ Attributes:
     start_time (float): The time in seconds relative to the start of the full audio file
 """
 class Phrase:
-    def __init__(self, text, full_audio_file_path_webm, phrase_audio_file_path_wav, start_time=0):
+    def __init__(self, text, full_audio_file_path_webm, phrase_audio_file_path_wav, start_time=0, index=0):
         self.text = text
         self.full_audio_file_path_webm = full_audio_file_path_webm
         self.phrase_audio_file_path_wav = phrase_audio_file_path_wav
         self.start_time = start_time
+        self.index = index
 
     # Construct a phrase given the client_id. Generates file paths.
     # Used for the first phrase in a transcription.
     @classmethod
     def create_first_phrase(cls, client_id):
         text = ''
+        index = 0
         unique_id = str(uuid.uuid4())
         full_audio_file_path_webm = f'audio/audio_file_{client_id}_{unique_id}.webm'
-        phrase_audio_file_path_wav = f'audio/audio_file_{client_id}_{unique_id}.wav'
+        phrase_audio_file_path_wav = f'audio/audio_file_{client_id}_{unique_id}_{index}.wav'
         start_time = 0
 
         print('\n\n-----------------------------------')
@@ -54,11 +56,12 @@ class Phrase:
     # Construct a phrase given the client_id, full audio file path, and start time.
     # Used when starting a new phrase from an existing audio file.
     @classmethod
-    def create_subsequent_phrase(cls, client_id, full_audio_file_path_webm, start_time):
+    def create_subsequent_phrase(cls, client_id, full_audio_file_path_webm, start_time, index):
         text = ''
+        index = index
         unique_id = str(uuid.uuid4())
         full_audio_file_path_webm = full_audio_file_path_webm
-        phrase_audio_file_path_wav = f'audio/audio_file_{client_id}_{unique_id}.wav'
+        phrase_audio_file_path_wav = f'audio/audio_file_{client_id}_{unique_id}_{index}.wav'
         start_time = start_time
         print(f'\n\nNew phrase: {phrase_audio_file_path_wav}')
 
@@ -101,6 +104,7 @@ class Phrase:
                 print('Error in vad.is_speech')
                 print(e)
                 traceback.print_exc()
+                is_speech = False
                 continue
             if not is_speech:
                 pause_duration += frame_duration
@@ -165,7 +169,6 @@ class TranscriptionProcessor:
         # We won't even consider starting a new phrase if the current phrase is less than 30 seconds
         if self.current_phrase().get_duration() > 5:
             # Try to start a new phrase on a major pause by checking the current audio chunk
-            # if self.is_major_pause(audio_chunk):
             if self.current_phrase().ends_with_major_pause():
                 self.start_new_phrase()
             # After a certain timeout, start a new phrase regardless of pause
@@ -182,13 +185,11 @@ class TranscriptionProcessor:
         print('\nStarting new phrase\n')
         # Start a new audio file for the next phrase
         current_phrase = self.current_phrase()
-        self.phrases.append(Phrase.create_subsequent_phrase(self.client_id, current_phrase.full_audio_file_path_webm, current_phrase.get_duration()))
-
-    # Returns true if audio_chunk contains no speech
-    def is_major_pause(self, audio_chunk):
-        transcription = cheap_model.transcribe(audio_chunk, fp16=use_fp16)["text"]
-        return transcription == ''
-
+        self.phrases.append(Phrase.create_subsequent_phrase(
+            self.client_id,
+            current_phrase.full_audio_file_path_webm,
+            current_phrase.start_time + current_phrase.get_duration(),
+            current_phrase.index + 1))
     
     # Start processing the audio queue. Intended to be run continuously in a separate thread.
     def start_process_audio_queue(self):
