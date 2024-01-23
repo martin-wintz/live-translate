@@ -44,12 +44,6 @@ class Phrase:
         full_audio_file_path_webm = f'audio/audio_file_{client_id}_{unique_id}.webm'
         phrase_audio_file_path_wav = f'audio/audio_file_{client_id}_{unique_id}_{index}.wav'
         start_time = 0
-
-        print('\n\n-----------------------------------')
-        print(f'\nFirst phrase: {phrase_audio_file_path_wav}')
-        print(f'full_audio_file_path_webm: {full_audio_file_path_webm}')
-        print('-----------------------------------\n\n')
-        print(f'\nFirst phrase: {phrase_audio_file_path_wav}')
         return cls(text, full_audio_file_path_webm, phrase_audio_file_path_wav, unique_id, start_time, index)
 
     # Construct a phrase given the client_id, full audio file path, and start time.
@@ -62,7 +56,6 @@ class Phrase:
         full_audio_file_path_webm = full_audio_file_path_webm
         phrase_audio_file_path_wav = f'audio/audio_file_{client_id}_{unique_id}_{index}.wav'
         start_time = start_time
-        print(f'\n\nNew phrase: {phrase_audio_file_path_wav}')
 
         return cls(text, full_audio_file_path_webm, phrase_audio_file_path_wav, unique_id, start_time, index)
             
@@ -130,7 +123,7 @@ class TranscriptionProcessor:
             print('Silent audio chunk detected, skipping transcription')
 
         # Decide whether we should start a new phrase
-        # We won't even consider starting a new phrase if the current phrase is less than 30 seconds
+        # We won't even consider starting a new phrase if the current phrase is too short
         if self.current_phrase().get_duration() > 5:
             # Try to start a new phrase on a major pause by checking the current audio chunk
             if ends_with_major_pause(self.current_phrase().phrase_audio_file_path_wav):
@@ -143,13 +136,8 @@ class TranscriptionProcessor:
         return {'transcriptions': [{'text': phrase.text} for phrase in self.phrases]}
 
     def start_new_phrase(self):
-        print('\nStarting new phrase\n')
         # Start a new audio file for the next phrase
         current_phrase = self.current_phrase()
-
-        print(f'current_phrase.index: {current_phrase.index}')
-        print(f'current_phrase.start_time: {current_phrase.start_time}')
-        print(f'current_phrase.text: {current_phrase.text}')
 
         self.phrases.append(Phrase.create_subsequent_phrase(
             self.client_id,
