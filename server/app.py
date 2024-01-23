@@ -46,8 +46,8 @@ def handle_audio_chunk(data):
         pass
 
 
-def transcription_callback(text):
-    socketio.emit('transcription', text)
+def transcription_callback(transcriptions):
+    socketio.emit('transcription', transcriptions)
 
 # ----------------- API -----------------
 @app.route('/start_recording', methods=['POST'])

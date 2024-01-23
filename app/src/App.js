@@ -9,8 +9,9 @@ axios.defaults.withCredentials = true;
 function App() {
   const [recording, setRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
-  const [transcription, setTranscription] = useState('');
   const [clientId, setClientId] = useState('');
+  const [transcriptions, setTranscriptions] = useState([]);
+
   
   useEffect(() => {
     const initializeSession = async () => {
@@ -21,8 +22,10 @@ function App() {
         console.log('Connected to server');
       });
 
-      socket.on('transcription', (transcription) => {
-        setTranscription(transcription);
+      socket.on('transcription', (response) => {
+        if (response.transcriptions && response.transcriptions.length > 0) {
+          setTranscriptions(response.transcriptions);
+        }
       });
 
       return () => {
@@ -84,7 +87,11 @@ function App() {
       <button onClick={recording ? stopRecording : startRecording}>
         {recording ? 'Stop' : 'Record'}
       </button>
-      <span>{transcription}</span>
+      <div>
+        {transcriptions.map((transcription, index) => (
+          <div key={index}>{transcription.text}</div>
+        ))}
+      </div>
     </div>
   );
 }
