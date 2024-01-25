@@ -8,6 +8,7 @@ import whisper
 import webrtcvad
 import wave
 from audio_utils import wave_read_frames, is_silent, ends_with_major_pause
+from log_utils import log_performance_decorator, log_performance_metric
 
 # model = whisper.load_model('base') # CUDA
 model = whisper.load_model('tiny.en') # CPU
@@ -74,6 +75,7 @@ class Phrase:
         wav_audio = AudioSegment.from_file(self.phrase_audio_file_path_wav, format="wav")
         return wav_audio.duration_seconds
 
+    @log_performance_decorator(log_performance_metric)
     def transcribe(self):
         self.text =  model.transcribe(self.phrase_audio_file_path_wav, fp16=use_fp16)["text"]
     

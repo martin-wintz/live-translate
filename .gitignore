@@ -9,6 +9,7 @@ db.sqlite3-journal
 .idea/
 .vscode/
 audio/*
+performance_log.txt
 
 # Flask-specific
 server/instance/
