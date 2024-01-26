@@ -36,3 +36,63 @@
     transform: rotate(360deg);
   }
 }
+
+.main-container {
+  position: relative;
+  margin: 100px auto;
+  width: 800px;
+
+  font-family: 'Times New Roman', Times, serif;
+  font-size: larger;
+}
+
+.transcription-container {
+  position: relative;
+
+  padding-bottom: 50px;
+}
+
+.old-transcriptions {
+  position: relative;
+}
+
+.old-transcriptions .transcription {
+  position: relative;
+}
+
+.current-transcriptions {
+  position: relative;
+}
+
+.current-transcriptions .transcription {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.old {
+  opacity: 1; /* Old transcription starts visible */
+}
+
+.new {
+  opacity: 0;
+}
+
+.new.fade-in {
+  animation: fadeIn 0.4s ease-in-out forwards;
+}
+
+.old.fade-out {
+  animation: fadeOut 0.4s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}

@@ -10,12 +10,12 @@ import wave
 from audio_utils import wave_read_frames, is_silent, ends_with_major_pause
 from log_utils import log_performance_decorator, log_performance_metric
 
-# model = whisper.load_model('base') # CUDA
-model = whisper.load_model('tiny.en') # CPU
+model = whisper.load_model('base') # CUDA
+# model = whisper.load_model('tiny.en') # CPU
 cheap_model = whisper.load_model('tiny')
 
 # TODO: Automatically detect if GPU is available
-use_fp16 = False
+use_fp16 = True
 
 """ A Phrase is a subsection of a transcription. 
 Contains the transcribed text and a path to the audio file

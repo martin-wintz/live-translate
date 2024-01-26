@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios'; // assuming you're using axios for HTTP requests
+import './App.css';
 
 const socket = io('http://localhost:5555');
 
@@ -10,10 +11,15 @@ function App() {
   const [recording, setRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [clientId, setClientId] = useState('');
-  const [transcriptions, setTranscriptions] = useState([]);
+  const [previousTranscriptions, setPreviousTranscriptions] = useState([]);
+  const [currentTranscription, setCurrentTranscription] = useState('');
+  const [newTranscription, setNewTranscription] = useState('');
+  const [transitioning, setTransitioning] = useState(false);
+
 
   
   useEffect(() => {
+
     const initializeSession = async () => {
       const response = await axios.post('http://localhost:5555/init_session');
       setClientId(response.data.client_id);
@@ -23,10 +29,38 @@ function App() {
       });
 
       socket.on('transcription', (response) => {
+
         if (response.transcriptions && response.transcriptions.length > 0) {
-          setTranscriptions(response.transcriptions);
+          const newServerTranscription = response.transcriptions[response.transcriptions.length - 1].text;
+
+          const previousTranscriptionsResponse = response.transcriptions.slice(0, response.transcriptions.length - 1);
+          setPreviousTranscriptions(function (previousTranscriptions) {
+              if (response.transcriptions.length > previousTranscriptions.length + 1) {
+                console.log('Got a new transcription');
+                console.log('Previous transcriptions: ', previousTranscriptions);
+                console.log('response.transcriptions: ', response.transcriptions)
+                // Because we got a new transcrition, the current transcription will be added to previousTranscriptions
+                // So we should not display it twice
+                setCurrentTranscription(()=>'');
+              }
+              return previousTranscriptionsResponse.map(transcription => transcription.text);
+            });
+          
+
+
+
+          setNewTranscription(newServerTranscription);
+
+          setTransitioning(true);
+
+          setTimeout(() => {
+            setCurrentTranscription(newServerTranscription);
+            setTransitioning(false);
+          }, 400); // Duration of the fade transition
+
         }
       });
+
 
       return () => {
         socket.off('connect');
@@ -83,17 +117,26 @@ function App() {
   
 
   return (
-    <div>
+    <div className="main-container">
+      <div className="transcription-container">
+        <div className="previous-transcriptions">
+          { previousTranscriptions.map((transcription, index) => (
+            <div className={`transcription`} key={index}>{transcription}</div>
+          ))}
+        </div>
+        <div className="current-transcriptions">
+          <div className={`transcription old ${transitioning ? 'fade-out' : ''}`}>{currentTranscription}</div>
+          {transitioning && 
+            <div className="transcription new fade-in">{newTranscription}</div>
+          }
+        </div>
+      </div>
       <button onClick={recording ? stopRecording : startRecording}>
         {recording ? 'Stop' : 'Record'}
       </button>
-      <div>
-        {transcriptions.map((transcription, index) => (
-          <div key={index}>{transcription.text}</div>
-        ))}
-      </div>
     </div>
   );
+
 }
 
 export default App;
