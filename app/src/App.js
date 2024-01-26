@@ -36,18 +36,12 @@ function App() {
           const previousTranscriptionsResponse = response.transcriptions.slice(0, response.transcriptions.length - 1);
           setPreviousTranscriptions(function (previousTranscriptions) {
               if (response.transcriptions.length > previousTranscriptions.length + 1) {
-                console.log('Got a new transcription');
-                console.log('Previous transcriptions: ', previousTranscriptions);
-                console.log('response.transcriptions: ', response.transcriptions)
                 // Because we got a new transcrition, the current transcription will be added to previousTranscriptions
                 // So we should not display it twice
                 setCurrentTranscription(()=>'');
               }
               return previousTranscriptionsResponse.map(transcription => transcription.text);
             });
-          
-
-
 
           setNewTranscription(newServerTranscription);
 

@@ -18,8 +18,8 @@ def is_silent(wav_file_path, speech_frame_threshold=10):
                 num_speech_frames += 1
                 if num_speech_frames >= speech_frame_threshold:
                     return False  # Not silent, as we have enough speech frames
-        except webrtcvad.VadError:
-            print('VadError: Skipping frame')
+        except Exception as e:
+            print(f'VadError: Skipping frame {e}')
 
     return True 
 
@@ -40,8 +40,8 @@ def ends_with_major_pause(wav_file_path, speech_frame_threshold=5, pause_length_
     for frame in frames:  
         try:
             num_speech_frames += vad.is_speech(frame, rate)
-        except webrtcvad.VadError:
-            print('VadError: Skipping frame')
+        except Exception as e:
+            print(f'VadError: Skipping frame {e}')
 
     return num_speech_frames < speech_frame_threshold
 
