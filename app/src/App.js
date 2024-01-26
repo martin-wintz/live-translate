@@ -16,16 +16,32 @@ function App() {
   const [newTranscription, setNewTranscription] = useState('');
   const [transitioning, setTransitioning] = useState(false);
 
-
   
   useEffect(() => {
 
+    console.log('Initializing session');
     const initializeSession = async () => {
       const response = await axios.post('http://localhost:5555/init_session');
       setClientId(response.data.client_id);
 
       socket.on('connect', () => {
         console.log('Connected to server');
+      });
+
+      socket.on('start_translation', (response) => {
+        console.log('start_translation', response);
+      });
+
+      socket.on('translation', (response) => {
+        console.log('translation', response);
+        setPreviousTranscriptions(function (previousTranscriptions) {
+          previousTranscriptions[response.index] = {
+            text: previousTranscriptions[response.index].text,
+            translation: response.translation
+          };
+
+          return previousTranscriptions;
+          });
       });
 
       socket.on('transcription', (response) => {
@@ -39,8 +55,10 @@ function App() {
                 // Because we got a new transcrition, the current transcription will be added to previousTranscriptions
                 // So we should not display it twice
                 setCurrentTranscription(()=>'');
+                previousTranscriptions.push({ text: response.transcriptions[response.transcriptions.length - 2].text });
               }
-              return previousTranscriptionsResponse.map(transcription => transcription.text);
+              
+              return previousTranscriptions;
             });
 
           setNewTranscription(newServerTranscription);
@@ -115,7 +133,12 @@ function App() {
       <div className="transcription-container">
         <div className="previous-transcriptions">
           { previousTranscriptions.map((transcription, index) => (
-            <div className={`transcription`} key={index}>{transcription}</div>
+            <div key={index}>
+              <div className={`transcription.text`}>{transcription}</div>
+              {transcription.translation && (
+                <div className="translation fade-in">{transcription.translation}</div>
+              )}
+            </div>
           ))}
         </div>
         <div className="current-transcriptions">
