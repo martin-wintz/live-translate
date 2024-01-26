@@ -49,10 +49,17 @@ def handle_audio_chunk(data):
 def transcription_callback(transcriptions):
     socketio.emit('transcription', transcriptions)
 
+def start_translation_callback(phrase):
+    print(f'Starting translation for phrase {phrase["index"]}')
+    socketio.emit('start_translation', phrase['index'])
+
+def translation_callback(phrase):
+    socketio.emit('translation', phrase)
+
 # ----------------- API -----------------
 @app.route('/start_recording', methods=['POST'])
 def start_recording():
-    processor = TranscriptionProcessor(session['client_id'], transcription_callback)
+    processor = TranscriptionProcessor(session['client_id'], transcription_callback, start_translation_callback, translation_callback)
     processor.start_process_audio_queue()
     transcription_manager.set_processor(session['client_id'], processor)
     return {'status': 'success'}

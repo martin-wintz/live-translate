@@ -1,18 +1,22 @@
 from queue import Queue
 import threading
 import time
-import traceback
 import uuid
+
+import requests
 from pydub import AudioSegment
 import whisper
-import webrtcvad
-import wave
-from audio_utils import wave_read_frames, is_silent, ends_with_major_pause
+from audio_utils import is_silent, ends_with_major_pause
 from log_utils import log_performance_decorator, log_performance_metric
+import fasttext
+import aiohttp
+import asyncio
+import os
 
-model = whisper.load_model('base') # CUDA
-# model = whisper.load_model('tiny.en') # CPU
-cheap_model = whisper.load_model('tiny')
+TRANSCRIPTION_MODEL = whisper.load_model('base') # CUDA
+# TRANSCRIPTION_MODEL = whisper.load_model('tiny.en') # CPU
+LANGUAGE_DETECTION_MODEL = fasttext.load_model('lid.176.ftz')
+
 
 # TODO: Automatically detect if GPU is available
 use_fp16 = True
@@ -25,6 +29,8 @@ Attributes:
     full_audio_file_path_webm (str): The path to the full audio file (webm)
     phrase_audio_file_path_wav (str): The path to the phrase audio file (wav)
     start_time (float): The time in seconds relative to the start of the full audio file
+    unique_id (str): A unique id for the audio file
+    index (int): The index of the phrase in the transcription
 """
 class Phrase:
     def __init__(self, text, full_audio_file_path_webm, phrase_audio_file_path_wav, unique_id, start_time=0, index=0):
@@ -34,6 +40,8 @@ class Phrase:
         self.start_time = start_time
         self.index = index
         self.unique_id = unique_id
+        self.detected_language = None
+        self.translation = None
 
     # Construct a phrase given the client_id. Generates file paths.
     # Used for the first phrase in a transcription.
@@ -60,6 +68,7 @@ class Phrase:
 
         return cls(text, full_audio_file_path_webm, phrase_audio_file_path_wav, unique_id, start_time, index)
             
+    """Writes the given audio chunk to the phrase audio file and the full audio file."""
     def write_audio_chunk(self, audio_chunk):
         # Append the audio chunk to the full webm audio file
         with open(self.full_audio_file_path_webm, 'ab') as audio_file:
@@ -77,14 +86,48 @@ class Phrase:
 
     @log_performance_decorator(log_performance_metric)
     def transcribe(self):
-        self.text =  model.transcribe(self.phrase_audio_file_path_wav, fp16=use_fp16)["text"]
+        self.text =  TRANSCRIPTION_MODEL.transcribe(self.phrase_audio_file_path_wav, fp16=use_fp16)["text"]
+
+    """Detects the language of the phrase and translates it to English if necessary."""
+    def detect_language_and_translate(self, translation_callback, start_translation_callback):
+        self.detected_language = self.detect_language(self.text)
+        print(f'Detected language: {self.detected_language}')
+        if self.detected_language != 'en':
+            start_translation_callback({'index': self.index})  # Emit event before starting translation
+            self.translation = self.translate_text(self.text)  # Synchronous call
+            print(f'Translation: {self.translation}')
+            translation_callback({'index': self.index, 'translation': self.translation})  # Emit event after translation
+
+
+    """Detects the language of the given text using the fasttext model."""
+    def detect_language(self, text):
+        predictions = LANGUAGE_DETECTION_MODEL.predict(text)
+        return predictions[0][0].replace("__label__", "")
+
+    """Translates the given text to English using the DeepL API."""
+    def translate_text(self, text):
+        # Convert this method to a synchronous version
+        deepl_auth_key = os.getenv('DEEPL_AUTH_KEY')
+        if not deepl_auth_key:
+            raise ValueError("DeepL auth key not found in environment variables")
+        
+        # Use requests or another synchronous HTTP client
+        response = requests.post('https://api-free.deepl.com/v2/translate', data={
+            'auth_key': deepl_auth_key,
+            'text': text,
+            'target_lang': 'EN'
+        })
+        result = response.json()
+        return result['translations'][0]['text']
     
 class TranscriptionProcessor:
-    def __init__(self, client_id, transcription_callback):
+    def __init__(self, client_id, transcription_callback, start_translation_callback, translation_callback):
         self.client_id = client_id
         self.processing_audio_queue = False
         self.phrases = [Phrase.create_first_phrase(client_id)]
         self.transcription_callback = transcription_callback
+        self.start_translation_callback = start_translation_callback
+        self.translation_callback = translation_callback
         self.audio_queue_timeout = 60 # seconds
         self.audio_queue_time_without_audio = 0 # seconds
         self.audio_queue = TranscriptionAudioQueue()
@@ -128,10 +171,11 @@ class TranscriptionProcessor:
         # We won't even consider starting a new phrase if the current phrase is too short
         if self.current_phrase().get_duration() > 5:
             # Try to start a new phrase on a major pause by checking the current audio chunk
-            if ends_with_major_pause(self.current_phrase().phrase_audio_file_path_wav):
-                self.start_new_phrase()
             # After a certain timeout, start a new phrase regardless of pause
-            elif self.current_phrase().get_duration() > 60:
+            if ends_with_major_pause(self.current_phrase().phrase_audio_file_path_wav) or self.current_phrase().get_duration() > 20:    
+                translation_thread = threading.Thread(target=self.current_phrase().detect_language_and_translate,
+                                                    args=(self.translation_callback, self.start_translation_callback))
+                translation_thread.start()
                 self.start_new_phrase()
 
     def full_transcription(self):
