@@ -7,16 +7,33 @@ const socket = io('http://localhost:5555');
 
 axios.defaults.withCredentials = true;
 
+
 function App() {
   const [recording, setRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [clientId, setClientId] = useState('');
   const [transcriptions, setTranscriptions] = useState([]);
 
+  // Uncomment to test with dummy data
+  // const [transcriptions, setTranscriptions] = useState([
+  //   {
+  //     transcription: 'Hello, my name is John',
+  //   },
+  //   {
+  //     transcription: 'I am 25 years old, and I live in Paris. I\'ve lived here for 10 years and enjoy it very much. My hobbies include playing the piano and reading books. I also enjoy playing tennis and going to the gym.',
+  //   },
+  //   {
+  //     transcription: 'Je parle français aussi bien que l\'anglais',
+  //     translation: 'I speak French as well as English'
+  //   },
+  //   {
+  //     transcription: 'I am a software engineer',
+  //   }
+  // ]);
+
   
   useEffect(() => {
 
-    console.log('Initializing session');
     const initializeSession = async () => {
       const response = await axios.post('http://localhost:5555/init_session');
       setClientId(response.data.client_id);
@@ -133,26 +150,28 @@ function App() {
   
 
   return (
-    <div className="main-container">
-      <div className="transcriptions-container">
-        <div className="transcriptions">
+    <div className="max-w-prose mx-auto px-4 font-serif text-xl py-10">
+      <div>
+        <div className="text-gray-900">
+          {recording && (transcriptions.length == 0) && <span className="animate-pulse-fast">|</span>}
           { transcriptions.map((transcription, index) => (
-            <div className="transcription-container">
-              <div className="transcription" key={index}>
-                <div className={`transcription-text old ${transcription.transitioning ? 'fade-out' : ''}`}>{transcription.transcription}</div>
+            <div className="mb-4">
+              <div className="relative" key={index}>
+                <span className={`${transcription.transitioning ? 'fade-out' : ''} ${transcription.translation ? 'text-pink-900':''} ${recording && (index == transcriptions.length - 1) ? 'text-gray-400':''} transition-colors`}>{transcription.transcription}</span>
+  {(recording && (index == transcriptions.length - 1)) && <span className="animate-pulse-fast">|</span>}
                 {transcription.transitioning && 
-                  <div className="transcription-text new fade-in">{transcription.incomingTranscription}</div>
+                  <div className="absolute top-0 left-0 opacity-0 fade-in text-gray-400">{transcription.incomingTranscription}</div>
                 }
               </div>
               { transcription.translation && 
-                <div className="translation fade-in">{transcription.translation}</div>
+                <div className="mb-6 text-pink-600 fade-in">{transcription.translation}</div>
               }
             </div>
           ))}
         </div>
       </div>
-      <button onClick={recording ? stopRecording : startRecording}>
-        {recording ? 'Stop' : 'Record'}
+      <button className="text-indigo-500 hover:text-indigo-700 transition-all" onClick={recording ? stopRecording : startRecording}>
+        {recording ? 'Stop transcribing.' : 'Click here to start transcribing.'}
       </button>
     </div>
   );
