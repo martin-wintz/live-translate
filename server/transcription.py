@@ -29,19 +29,20 @@ Attributes:
     full_audio_file_path_webm (str): The path to the full audio file (webm)
     phrase_audio_file_path_wav (str): The path to the phrase audio file (wav)
     start_time (float): The time in seconds relative to the start of the full audio file
-    unique_id (str): A unique id for the audio file
+    transcription_id (str): A unique id for the transcription
     index (int): The index of the phrase in the transcription
 """
 class Phrase:
-    def __init__(self, text, full_audio_file_path_webm, phrase_audio_file_path_wav, unique_id, start_time=0, index=0):
+    def __init__(self, text, full_audio_file_path_webm, phrase_audio_file_path_wav, transcription_id, start_time=0, index=0):
         self.text = text
         self.full_audio_file_path_webm = full_audio_file_path_webm
         self.phrase_audio_file_path_wav = phrase_audio_file_path_wav
         self.start_time = start_time
         self.index = index
-        self.unique_id = unique_id
+        self.transcription_id = transcription_id
         self.detected_language = None
         self.translation = None
+
 
     # Construct a phrase given the client_id. Generates file paths.
     # Used for the first phrase in a transcription.
@@ -49,24 +50,24 @@ class Phrase:
     def create_first_phrase(cls, client_id):
         text = ''
         index = 0
-        unique_id = str(uuid.uuid4())
-        full_audio_file_path_webm = f'audio/audio_file_{client_id}_{unique_id}.webm'
-        phrase_audio_file_path_wav = f'audio/audio_file_{client_id}_{unique_id}_{index}.wav'
+        transcription_id = str(uuid.uuid4())
+        full_audio_file_path_webm = f'audio/audio_file_{client_id}_{transcription_id}.webm'
+        phrase_audio_file_path_wav = f'audio/audio_file_{client_id}_{transcription_id}_{index}.wav'
         start_time = 0
-        return cls(text, full_audio_file_path_webm, phrase_audio_file_path_wav, unique_id, start_time, index)
+        return cls(text, full_audio_file_path_webm, phrase_audio_file_path_wav, transcription_id, start_time, index)
 
     # Construct a phrase given the client_id, full audio file path, and start time.
     # Used when starting a new phrase from an existing audio file.
     @classmethod
-    def create_subsequent_phrase(cls, client_id, full_audio_file_path_webm, start_time, index, unique_id):
+    def create_subsequent_phrase(cls, client_id, full_audio_file_path_webm, start_time, index, transcription_id):
         text = ''
         index = index
-        unique_id = unique_id
+        transcription_id = transcription_id
         full_audio_file_path_webm = full_audio_file_path_webm
-        phrase_audio_file_path_wav = f'audio/audio_file_{client_id}_{unique_id}_{index}.wav'
+        phrase_audio_file_path_wav = f'audio/audio_file_{client_id}_{transcription_id}_{index}.wav'
         start_time = start_time
 
-        return cls(text, full_audio_file_path_webm, phrase_audio_file_path_wav, unique_id, start_time, index)
+        return cls(text, full_audio_file_path_webm, phrase_audio_file_path_wav, transcription_id, start_time, index)
             
     """Writes the given audio chunk to the phrase audio file and the full audio file."""
     def write_audio_chunk(self, audio_chunk):
@@ -190,7 +191,7 @@ class TranscriptionProcessor:
             current_phrase.full_audio_file_path_webm,
             current_phrase.start_time + current_phrase.get_duration(),
             current_phrase.index + 1,
-            current_phrase.unique_id))
+            current_phrase.transcription_id))
     
     # Start processing the audio queue. Intended to be run continuously in a separate thread.
     def start_process_audio_queue(self):
