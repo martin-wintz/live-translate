@@ -30,10 +30,15 @@ function App() {
       });
 
       socket.on('translation', (response) => {
-        // setTranslations(prevTranslations => ({
-        //   ...prevTranslations,
-        //   [response.index]: response.translation
-        // }));
+        setTranscriptions((previousTranscriptions) => {
+          const transcriptions = [...previousTranscriptions]
+          if (!transcriptions[response.index]) {
+            throw new Error('Translation received for non-existent transcription');
+          } else if (transcriptions[response.index].translation !== response.translation) {
+            transcriptions[response.index].translation = response.translation;
+          }
+          return transcriptions;
+        });
       });
 
       socket.on('transcription', (transcription) => {
@@ -41,11 +46,14 @@ function App() {
         setTranscriptions(function (previousTranscriptions) {
           const transcriptions = [...previousTranscriptions]
 
+          // If the transcription is new, add it to the list of transcriptions
+          // We update incomingTranscription to trigger the fade-in transition
           if (!transcriptions[transcription.index]) {
             transcriptions[transcription.index] = {
               incomingTranscription: transcription.text,
               transitioning: true
             }
+          // Update the transcription if it has changed
           } else {
             if (transcriptions[transcription.index].transcription !== transcription.text) {
               transcriptions[transcription.index].incomingTranscription = transcription.text;
@@ -56,6 +64,7 @@ function App() {
           return transcriptions;
           });
 
+          // Remove the old transcription after the fade transition
           setTimeout(() => {
             setTranscriptions(function (previousTranscriptions) {
               const transcriptions = [...previousTranscriptions];
@@ -64,36 +73,9 @@ function App() {
               transcriptions[transcription.index].incomingTranscription = '';
               return transcriptions;
             });
-          }, 400); // Duration of the fade transition
+          }, 400); // Duration of the fade transition, MUST MATCH CSS
 
         });
-
-        // if (response.transcriptions && response.transcriptions.length > 0) {
-        //   const newServerTranscription = response.transcriptions[response.transcriptions.length - 1].text;
-
-        //   const previousTranscriptionsResponse = response.transcriptions.slice(0, response.transcriptions.length - 1);
-        //   setPreviousTranscriptions(function (previousTranscriptions) {
-        //       if (response.transcriptions.length > previousTranscriptions.length + 1) {
-        //         // Because we got a new transcrition, the current transcription will be added to previousTranscriptions
-        //         // So we should not display it twice
-        //         setCurrentTranscription(()=>'');
-        //         previousTranscriptions.push({ text: response.transcriptions[response.transcriptions.length - 2].text });
-        //       }
-              
-        //       return previousTranscriptions;
-        //     });
-
-        //   setNewTranscription(newServerTranscription);
-
-        //   setTransitioning(true);
-
-        //   setTimeout(() => {
-        //     setCurrentTranscription(newServerTranscription);
-        //     setTransitioning(false);
-        //   }, 400); // Duration of the fade transition
-
-        // }
-      // });
 
 
       return () => {
@@ -152,33 +134,22 @@ function App() {
 
   return (
     <div className="main-container">
-      <div className="transcription-container">
+      <div className="transcriptions-container">
         <div className="transcriptions">
           { transcriptions.map((transcription, index) => (
-            <div className="transcription" key={index}>
-              <div className={`transcription-text old ${transcription.transitioning ? 'fade-out' : ''}`}>{transcription.transcription}</div>
-              {transcription.transitioning && 
-                <div className="transcription-text new fade-in">{transcription.incomingTranscription}</div>
+            <div className="transcription-container">
+              <div className="transcription" key={index}>
+                <div className={`transcription-text old ${transcription.transitioning ? 'fade-out' : ''}`}>{transcription.transcription}</div>
+                {transcription.transitioning && 
+                  <div className="transcription-text new fade-in">{transcription.incomingTranscription}</div>
+                }
+              </div>
+              { transcription.translation && 
+                <div className="translation fade-in">{transcription.translation}</div>
               }
-            </div>
-            ))}
-        </div>
-        {/* <div className="previous-transcriptions">
-          { previousTranscriptions.map((transcription, index) => (
-            <div key={index}>
-              <div className={`transcription`}>{transcription}</div>
-              {translations[index] && (
-                <div className="translation fade-in">{translations[index]}</div>
-              )}
             </div>
           ))}
         </div>
-        <div className="current-transcriptions">
-          <div className={`transcription old ${transitioning ? 'fade-out' : ''}`}>{currentTranscription}</div>
-          {transitioning && 
-            <div className="transcription new fade-in">{newTranscription}</div>
-          }
-        </div> */}
       </div>
       <button onClick={recording ? stopRecording : startRecording}>
         {recording ? 'Stop' : 'Record'}

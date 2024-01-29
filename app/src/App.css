@@ -40,13 +40,13 @@
 .main-container {
   position: relative;
   margin: 100px auto;
-  width: 800px;
+  width: auto;
 
   font-family: 'Times New Roman', Times, serif;
   font-size: larger;
 }
 
-.transcription-container {
+.transcriptions-container {
   position: relative;
 
   padding-bottom: 50px;
@@ -56,13 +56,24 @@
   position: relative;
 }
 
+.transcription-container {
+  position: relative;
+  padding-bottom: 10px;
+}
+
 .transcription {
   position: relative;
-  padding-bottom: 30px;
+  height: fit-content;
+  padding-bottom: 15px;
+}
+
+.translation {
+  color: green;
+  position: relative;
+  padding-bottom: 20px;
 }
 
 .transcriptions .transcription-text {
-  position: absolute;
   top: 0;
   left: 0;
   width: 100%;
@@ -73,6 +84,7 @@
 }
 
 .transcription-text.new {
+  position: absolute;
   opacity: 0;
 }
 
