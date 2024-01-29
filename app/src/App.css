@@ -52,30 +52,27 @@
   padding-bottom: 50px;
 }
 
-.old-transcriptions {
+.transcriptions {
   position: relative;
 }
 
-.old-transcriptions .transcription {
+.transcription {
   position: relative;
+  padding-bottom: 30px;
 }
 
-.current-transcriptions {
-  position: relative;
-}
-
-.current-transcriptions .transcription {
+.transcriptions .transcription-text {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
 }
 
-.old {
+.transcription-text.old {
   opacity: 1; /* Old transcription starts visible */
 }
 
-.new {
+.transcription-text.new {
   opacity: 0;
 }
 

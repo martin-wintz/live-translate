@@ -43,7 +43,6 @@ class Phrase:
         self.detected_language = None
         self.translation = None
 
-
     # Construct a phrase given the client_id. Generates file paths.
     # Used for the first phrase in a transcription.
     @classmethod
@@ -120,6 +119,16 @@ class Phrase:
         })
         result = response.json()
         return result['translations'][0]['text']
+
+    def serialize(self):
+        return {
+            'text': self.text,
+            'start_time': self.start_time,
+            'index': self.index,
+            'transcription_id': self.transcription_id,
+            'detected_language': self.detected_language,
+            'translation': self.translation
+        }
     
 class TranscriptionProcessor:
     def __init__(self, client_id, transcription_callback, start_translation_callback, translation_callback):
@@ -164,7 +173,7 @@ class TranscriptionProcessor:
             print('Not silent, transcribing')
             self.current_phrase().transcribe()
             # TODO (performance): Keep track of full transcription on client as well so we don't have to always send the whole thing
-            self.transcription_callback(self.full_transcription())
+            self.transcription_callback(self.current_phrase().serialize())
         else:
             print('Silent audio chunk detected, skipping transcription')
 
@@ -178,9 +187,6 @@ class TranscriptionProcessor:
                                                     args=(self.translation_callback, self.start_translation_callback))
                 translation_thread.start()
                 self.start_new_phrase()
-
-    def full_transcription(self):
-        return {'transcriptions': [{'text': phrase.text} for phrase in self.phrases]}
 
     def start_new_phrase(self):
         # Start a new audio file for the next phrase

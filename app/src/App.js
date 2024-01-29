@@ -11,10 +11,7 @@ function App() {
   const [recording, setRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [clientId, setClientId] = useState('');
-  const [previousTranscriptions, setPreviousTranscriptions] = useState([]);
-  const [currentTranscription, setCurrentTranscription] = useState('');
-  const [newTranscription, setNewTranscription] = useState('');
-  const [transitioning, setTransitioning] = useState(false);
+  const [transcriptions, setTranscriptions] = useState([]);
 
   
   useEffect(() => {
@@ -33,45 +30,70 @@ function App() {
       });
 
       socket.on('translation', (response) => {
-        console.log('translation', response);
-        setPreviousTranscriptions(function (previousTranscriptions) {
-          previousTranscriptions[response.index] = {
-            text: previousTranscriptions[response.index].text,
-            translation: response.translation
-          };
-
-          return previousTranscriptions;
-          });
+        // setTranslations(prevTranslations => ({
+        //   ...prevTranslations,
+        //   [response.index]: response.translation
+        // }));
       });
 
-      socket.on('transcription', (response) => {
+      socket.on('transcription', (transcription) => {
+        
+        setTranscriptions(function (previousTranscriptions) {
+          const transcriptions = [...previousTranscriptions]
 
-        if (response.transcriptions && response.transcriptions.length > 0) {
-          const newServerTranscription = response.transcriptions[response.transcriptions.length - 1].text;
+          if (!transcriptions[transcription.index]) {
+            transcriptions[transcription.index] = {
+              incomingTranscription: transcription.text,
+              transitioning: true
+            }
+          } else {
+            if (transcriptions[transcription.index].transcription !== transcription.text) {
+              transcriptions[transcription.index].incomingTranscription = transcription.text;
+              transcriptions[transcription.index].transitioning = true;
+            }
+          }
 
-          const previousTranscriptionsResponse = response.transcriptions.slice(0, response.transcriptions.length - 1);
-          setPreviousTranscriptions(function (previousTranscriptions) {
-              if (response.transcriptions.length > previousTranscriptions.length + 1) {
-                // Because we got a new transcrition, the current transcription will be added to previousTranscriptions
-                // So we should not display it twice
-                setCurrentTranscription(()=>'');
-                previousTranscriptions.push({ text: response.transcriptions[response.transcriptions.length - 2].text });
-              }
-              
-              return previousTranscriptions;
-            });
-
-          setNewTranscription(newServerTranscription);
-
-          setTransitioning(true);
+          return transcriptions;
+          });
 
           setTimeout(() => {
-            setCurrentTranscription(newServerTranscription);
-            setTransitioning(false);
+            setTranscriptions(function (previousTranscriptions) {
+              const transcriptions = [...previousTranscriptions];
+              transcriptions[transcription.index].transcription = transcription.text;
+              transcriptions[transcription.index].transitioning = false;
+              transcriptions[transcription.index].incomingTranscription = '';
+              return transcriptions;
+            });
           }, 400); // Duration of the fade transition
 
-        }
-      });
+        });
+
+        // if (response.transcriptions && response.transcriptions.length > 0) {
+        //   const newServerTranscription = response.transcriptions[response.transcriptions.length - 1].text;
+
+        //   const previousTranscriptionsResponse = response.transcriptions.slice(0, response.transcriptions.length - 1);
+        //   setPreviousTranscriptions(function (previousTranscriptions) {
+        //       if (response.transcriptions.length > previousTranscriptions.length + 1) {
+        //         // Because we got a new transcrition, the current transcription will be added to previousTranscriptions
+        //         // So we should not display it twice
+        //         setCurrentTranscription(()=>'');
+        //         previousTranscriptions.push({ text: response.transcriptions[response.transcriptions.length - 2].text });
+        //       }
+              
+        //       return previousTranscriptions;
+        //     });
+
+        //   setNewTranscription(newServerTranscription);
+
+        //   setTransitioning(true);
+
+        //   setTimeout(() => {
+        //     setCurrentTranscription(newServerTranscription);
+        //     setTransitioning(false);
+        //   }, 400); // Duration of the fade transition
+
+        // }
+      // });
 
 
       return () => {
@@ -131,12 +153,22 @@ function App() {
   return (
     <div className="main-container">
       <div className="transcription-container">
-        <div className="previous-transcriptions">
+        <div className="transcriptions">
+          { transcriptions.map((transcription, index) => (
+            <div className="transcription" key={index}>
+              <div className={`transcription-text old ${transcription.transitioning ? 'fade-out' : ''}`}>{transcription.transcription}</div>
+              {transcription.transitioning && 
+                <div className="transcription-text new fade-in">{transcription.incomingTranscription}</div>
+              }
+            </div>
+            ))}
+        </div>
+        {/* <div className="previous-transcriptions">
           { previousTranscriptions.map((transcription, index) => (
             <div key={index}>
-              <div className={`transcription.text`}>{transcription}</div>
-              {transcription.translation && (
-                <div className="translation fade-in">{transcription.translation}</div>
+              <div className={`transcription`}>{transcription}</div>
+              {translations[index] && (
+                <div className="translation fade-in">{translations[index]}</div>
               )}
             </div>
           ))}
@@ -146,7 +178,7 @@ function App() {
           {transitioning && 
             <div className="transcription new fade-in">{newTranscription}</div>
           }
-        </div>
+        </div> */}
       </div>
       <button onClick={recording ? stopRecording : startRecording}>
         {recording ? 'Stop' : 'Record'}
