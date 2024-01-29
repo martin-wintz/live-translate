@@ -187,6 +187,7 @@ class TranscriptionProcessor:
                                                     args=(self.translation_callback, self.start_translation_callback))
                 translation_thread.start()
                 self.start_new_phrase()
+                self.transcription_callback(self.current_phrase().serialize())
 
     def start_new_phrase(self):
         # Start a new audio file for the next phrase
