@@ -25,7 +25,7 @@ use_fp16 = True
 Contains the transcribed text and a path to the audio file
 
 Attributes:
-    text (str): The transcribed text
+    transcription (str): The transcribed text
     full_audio_file_path_webm (str): The path to the full audio file (webm)
     phrase_audio_file_path_wav (str): The path to the phrase audio file (wav)
     start_time (float): The time in seconds relative to the start of the full audio file
@@ -33,8 +33,8 @@ Attributes:
     index (int): The index of the phrase in the transcription
 """
 class Phrase:
-    def __init__(self, text, full_audio_file_path_webm, phrase_audio_file_path_wav, transcription_id, start_time=0, index=0):
-        self.text = text
+    def __init__(self, transcription, full_audio_file_path_webm, phrase_audio_file_path_wav, transcription_id, start_time=0, index=0):
+        self.transcription = transcription
         self.full_audio_file_path_webm = full_audio_file_path_webm
         self.phrase_audio_file_path_wav = phrase_audio_file_path_wav
         self.start_time = start_time
@@ -47,26 +47,26 @@ class Phrase:
     # Used for the first phrase in a transcription.
     @classmethod
     def create_first_phrase(cls, client_id):
-        text = ''
+        transcription = ''
         index = 0
         transcription_id = str(uuid.uuid4())
         full_audio_file_path_webm = f'audio/audio_file_{client_id}_{transcription_id}.webm'
         phrase_audio_file_path_wav = f'audio/audio_file_{client_id}_{transcription_id}_{index}.wav'
         start_time = 0
-        return cls(text, full_audio_file_path_webm, phrase_audio_file_path_wav, transcription_id, start_time, index)
+        return cls(transcription, full_audio_file_path_webm, phrase_audio_file_path_wav, transcription_id, start_time, index)
 
     # Construct a phrase given the client_id, full audio file path, and start time.
     # Used when starting a new phrase from an existing audio file.
     @classmethod
     def create_subsequent_phrase(cls, client_id, full_audio_file_path_webm, start_time, index, transcription_id):
-        text = ''
+        transcription = ''
         index = index
         transcription_id = transcription_id
         full_audio_file_path_webm = full_audio_file_path_webm
         phrase_audio_file_path_wav = f'audio/audio_file_{client_id}_{transcription_id}_{index}.wav'
         start_time = start_time
 
-        return cls(text, full_audio_file_path_webm, phrase_audio_file_path_wav, transcription_id, start_time, index)
+        return cls(transcription, full_audio_file_path_webm, phrase_audio_file_path_wav, transcription_id, start_time, index)
             
     """Writes the given audio chunk to the phrase audio file and the full audio file."""
     def write_audio_chunk(self, audio_chunk):
@@ -86,15 +86,15 @@ class Phrase:
 
     @log_performance_decorator(log_performance_metric)
     def transcribe(self):
-        self.text =  TRANSCRIPTION_MODEL.transcribe(self.phrase_audio_file_path_wav, fp16=use_fp16)["text"]
+        self.transcription =  TRANSCRIPTION_MODEL.transcribe(self.phrase_audio_file_path_wav, fp16=use_fp16)["text"]
 
     """Detects the language of the phrase and translates it to English if necessary."""
     def detect_language_and_translate(self, translation_callback, start_translation_callback):
-        self.detected_language = self.detect_language(self.text)
+        self.detected_language = self.detect_language(self.transcription)
         print(f'Detected language: {self.detected_language}')
         if self.detected_language != 'en':
             start_translation_callback({'index': self.index})  # Emit event before starting translation
-            self.translation = self.translate_text(self.text)  # Synchronous call
+            self.translation = self.translate_text(self.transcription)  # Synchronous call
             print(f'Translation: {self.translation}')
             translation_callback({'index': self.index, 'translation': self.translation})  # Emit event after translation
 
@@ -122,7 +122,7 @@ class Phrase:
 
     def serialize(self):
         return {
-            'text': self.text,
+            'transcription': self.transcription,
             'start_time': self.start_time,
             'index': self.index,
             'transcription_id': self.transcription_id,

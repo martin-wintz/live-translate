@@ -14,26 +14,32 @@ function App() {
   const [recording, setRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [clientId, setClientId] = useState('');
-  const [transcriptions, setTranscriptions] = useState([]);
+  const [transcription, setTranscription] = useState({ phrases: [] });
 
-  // Uncomment to test with dummy data
-  // const [transcriptions, setTranscriptions] = useState([
-  //   {
-  //     transcription: 'Hello, my name is John',
-  //   },
-  //   {
-  //     transcription: 'I am 25 years old, and I live in Paris. I\'ve lived here for 10 years and enjoy it very much. My hobbies include playing the piano and reading books. I also enjoy playing tennis and going to the gym.',
-  //   },
-  //   {
-  //     transcription: 'Je parle français aussi bien que l\'anglais',
-  //     translation: 'I speak French as well as English'
-  //   },
-  //   {
-  //     transcription: 'I am a software engineer',
-  //   }
-  // ]);
+  if (process.env.NODE_ENV === 'development') {
+    window.loadTestData = () => {
+      setTranscription(() => ({ phrases: [
+        {
+          index: 0,
+          transcription: 'Hello, my name is John',
+        },
+        {
+          index: 1,
+          transcription: 'I am 24 years old, and I live in Paris. I\'ve lived here for 10 years and enjoy it very much. My hobbies include playing the piano and reading books. I also enjoy playing tennis and going to the gym.',
+        },
+        {
+          index: 2,
+          transcription: 'Je parle français aussi bien que l\'anglais',
+          translation: 'I speak French as well as English'
+        },
+        {
+          index: 3,
+          transcription: 'I am a software engineer',
+        }
+      ]}));
+    }
+  }
 
-  
   useEffect(() => {
 
     const initializeSession = async () => {
@@ -48,53 +54,61 @@ function App() {
         console.log('start_translation', response);
       });
 
-      socket.on('translation', (response) => {
-        setTranscriptions((previousTranscriptions) => {
-          const transcriptions = [...previousTranscriptions]
-          if (!transcriptions[response.index]) {
+      socket.on('translation', (responsePhrase) => {
+        setTranscription((previousTranscription) => {
+          const transcription = {...previousTranscription};
+          if (!transcription.phrases[responsePhrase.index]) {
             throw new Error('Translation received for non-existent transcription');
-          } else if (transcriptions[response.index].translation !== response.translation) {
-            transcriptions[response.index].translation = response.translation;
+          } else if (transcription.phrases[responsePhrase.index].translation !== responsePhrase.translation) {
+            transcription.phrases[responsePhrase.index] = {
+              ...transcription.phrases[responsePhrase.index],
+              translation: responsePhrase.translation
+            }
           }
-          return transcriptions;
+          return transcription;
         });
       });
 
-      socket.on('transcription', (transcription) => {
+      socket.on('transcription', (responsePhrase) => {
         
-        setTranscriptions(function (previousTranscriptions) {
-          const transcriptions = [...previousTranscriptions]
+      setTranscription(function (previousTranscription) {
+        const transcription = {...previousTranscription};
 
-          // If the transcription is new, add it to the list of transcriptions
-          // We update incomingTranscription to trigger the fade-in transition
-          if (!transcriptions[transcription.index]) {
-            transcriptions[transcription.index] = {
-              incomingTranscription: transcription.text,
-              transitioning: true
-            }
-          // Update the transcription if it has changed
-          } else {
-            if (transcriptions[transcription.index].transcription !== transcription.text) {
-              transcriptions[transcription.index].incomingTranscription = transcription.text;
-              transcriptions[transcription.index].transitioning = true;
-            }
-          }
+        // If the phrase is new, add it to the list of phrases
+        // We update incomingTranscription to trigger the fade-in transition
+        if (!transcription.phrases[responsePhrase.index]) {
+          transcription.phrases[responsePhrase.index] = {
+            incomingTranscription: responsePhrase.transcription,
+            transitioning: true
+          };
+        // Update the transcription if it has changed
+        } else if (transcription.phrases[responsePhrase.index].transcription !== responsePhrase.transcription) {
+          transcription.phrases[responsePhrase.index] = {
+            ...transcription.phrases[responsePhrase.index],
+            incomingTranscription: responsePhrase.transcription,
+            transitioning: true
+          };
+        } 
 
-          return transcriptions;
+        return transcription;
+      });
+
+
+        // Remove the old transcription after the fade transition
+        setTimeout(() => {
+          setTranscription(function (previousTranscription) {
+            const transcription = {...previousTranscription};
+            transcription.phrases[responsePhrase.index] = {
+              ...transcription.phrases[responsePhrase.index],
+              transcription: responsePhrase.transcription,
+              transitioning: false,
+              incomingTranscription: ''
+            };
+            return transcription;
           });
+        }, 400); // Duration of the fade transition, MUST MATCH CSS
 
-          // Remove the old transcription after the fade transition
-          setTimeout(() => {
-            setTranscriptions(function (previousTranscriptions) {
-              const transcriptions = [...previousTranscriptions];
-              transcriptions[transcription.index].transcription = transcription.text;
-              transcriptions[transcription.index].transitioning = false;
-              transcriptions[transcription.index].incomingTranscription = '';
-              return transcriptions;
-            });
-          }, 400); // Duration of the fade transition, MUST MATCH CSS
-
-        });
+      });
 
 
       return () => {
@@ -116,7 +130,7 @@ function App() {
   }
 
   const startRecording = async () => {
-    setTranscriptions([]);
+    setTranscription({phrases:[]});
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
     setMediaRecorder(recorder);
@@ -156,18 +170,18 @@ function App() {
     <div className="max-w-prose mx-auto px-4 font-serif text-xl py-20">
       <div>
         <div className="text-gray-900">
-          {recording && (transcriptions.length == 0) && <span className="animate-pulse-fast">|</span>}
-          {transcriptions.map((transcription, index) => (
-            <div className="mb-4">
-              <div className="relative" key={index}>
-                <span className={`${transcription.transitioning ? 'fade-out' : ''} ${transcription.translation ? 'text-pink-900' : ''} ${recording && (index == transcriptions.length - 1) ? 'text-gray-400' : ''} transition-colors`}>{transcription.transcription}</span>
-                {(recording && (index == transcriptions.length - 1)) && <span className="animate-pulse-fast">|</span>}
-                {transcription.transitioning &&
-                  <div className="absolute top-0 left-0 opacity-0 fade-in text-gray-400">{transcription.incomingTranscription}</div>
+          {recording && transcription.phrases && (transcription.phrases.length == 0) && <span className="animate-pulse-fast">|</span>}
+          {transcription.phrases && transcription.phrases.map((phrase, index) => (
+            <div className="mb-4" key={index}>
+              <div className="relative">
+                <span className={`${phrase.transitioning ? 'fade-out' : ''} ${phrase.translation ? 'text-pink-900' : ''} ${recording && (index == transcription.phrases.length - 1) ? 'text-gray-400' : ''} transition-colors`}>{phrase.transcription}</span>
+                {(recording && (index == transcription.phrases.length - 1)) && <span className="animate-pulse-fast">|</span>}
+                {phrase.transitioning &&
+                  <div className="absolute top-0 left-0 opacity-0 fade-in text-gray-400">{phrase.incomingTranscription}</div>
                 }
               </div>
-              {transcription.translation &&
-                <div className="mb-6 text-pink-600 fade-in">{transcription.translation}</div>
+              {phrase.translation &&
+                <div className="mb-6 text-pink-600 fade-in">{phrase.translation}</div>
               }
             </div>
           ))}
