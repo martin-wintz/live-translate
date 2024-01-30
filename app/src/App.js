@@ -3,9 +3,11 @@ import io from 'socket.io-client';
 import axios from 'axios'; // assuming you're using axios for HTTP requests
 import './App.css';
 
-const socket = io('http://localhost:5555');
+const server = 'http://localhost:5555';
+const socket = io(server);
 
 axios.defaults.withCredentials = true;
+axios.defaults.root = server;
 
 
 function App() {
@@ -35,7 +37,7 @@ function App() {
   useEffect(() => {
 
     const initializeSession = async () => {
-      const response = await axios.post('http://localhost:5555/init_session');
+      const response = await axios.post('/init_session');
       setClientId(response.data.client_id);
 
       socket.on('connect', () => {
@@ -105,12 +107,12 @@ function App() {
 
   const initializeNewRecording = () => {
     // Call backend to initialize audio file
-    return axios.post('http://localhost:5555/start_recording');
+    return axios.post('/start_recording');
   }
 
   const closeRecording = () => {
     // Call backend to close audio file
-    return axios.post('http://localhost:5555/stop_recording');
+    return axios.post('/stop_recording');
   }
 
   const startRecording = async () => {
@@ -171,7 +173,7 @@ function App() {
           ))}
         </div>
       </div>
-      <button className="text-indigo-500 hover:text-indigo-700 transition-colors mt-20" onClick={recording ? stopRecording : startRecording}>
+      <button className="text-indigo-500 hover:text-indigo-700 transition-colors mt-20j" onClick={recording ? stopRecording : startRecording}>
         {recording ? 'Stop transcribing.' : 'Click here to start transcribing.'}
       </button>
     </div>
