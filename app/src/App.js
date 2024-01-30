@@ -114,6 +114,7 @@ function App() {
   }
 
   const startRecording = async () => {
+    setTranscriptions([]);
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
     setMediaRecorder(recorder);
@@ -150,27 +151,27 @@ function App() {
   
 
   return (
-    <div className="max-w-prose mx-auto px-4 font-serif text-xl py-10">
+    <div className="max-w-prose mx-auto px-4 font-serif text-xl py-20">
       <div>
         <div className="text-gray-900">
           {recording && (transcriptions.length == 0) && <span className="animate-pulse-fast">|</span>}
-          { transcriptions.map((transcription, index) => (
+          {transcriptions.map((transcription, index) => (
             <div className="mb-4">
               <div className="relative" key={index}>
-                <span className={`${transcription.transitioning ? 'fade-out' : ''} ${transcription.translation ? 'text-pink-900':''} ${recording && (index == transcriptions.length - 1) ? 'text-gray-400':''} transition-colors`}>{transcription.transcription}</span>
-  {(recording && (index == transcriptions.length - 1)) && <span className="animate-pulse-fast">|</span>}
-                {transcription.transitioning && 
+                <span className={`${transcription.transitioning ? 'fade-out' : ''} ${transcription.translation ? 'text-pink-900' : ''} ${recording && (index == transcriptions.length - 1) ? 'text-gray-400' : ''} transition-colors`}>{transcription.transcription}</span>
+                {(recording && (index == transcriptions.length - 1)) && <span className="animate-pulse-fast">|</span>}
+                {transcription.transitioning &&
                   <div className="absolute top-0 left-0 opacity-0 fade-in text-gray-400">{transcription.incomingTranscription}</div>
                 }
               </div>
-              { transcription.translation && 
+              {transcription.translation &&
                 <div className="mb-6 text-pink-600 fade-in">{transcription.translation}</div>
               }
             </div>
           ))}
         </div>
       </div>
-      <button className="text-indigo-500 hover:text-indigo-700 transition-all" onClick={recording ? stopRecording : startRecording}>
+      <button className="text-indigo-500 hover:text-indigo-700 transition-colors mt-20" onClick={recording ? stopRecording : startRecording}>
         {recording ? 'Stop transcribing.' : 'Click here to start transcribing.'}
       </button>
     </div>
