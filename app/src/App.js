@@ -50,10 +50,6 @@ function App() {
         console.log('Connected to server');
       });
 
-      socket.on('start_translation', (response) => {
-        console.log('start_translation', response);
-      });
-
       socket.on('translation', (responsePhrase) => {
         setTranscription((previousTranscription) => {
           const transcription = {...previousTranscription};

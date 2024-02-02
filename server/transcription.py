@@ -23,107 +23,62 @@ PAUSE_LENGTH_THRESHOLD = 0.7
 # TODO: Automatically detect if GPU is available
 use_fp16 = True
 
-""" A Phrase is a subsection of a transcription. 
-Contains the transcribed text and a path to the audio file
-
+"""Represents a phrase in a transcription.
 Attributes:
-    transcription (str): The transcribed text
-    full_audio_file_path_webm (str): The path to the full audio file (webm)
-    phrase_audio_file_path_wav (str): The path to the phrase audio file (wav)
-    start_time (float): The time in seconds relative to the start of the full audio file
-    transcription_id (str): A unique id for the transcription
-    index (int): The index of the phrase in the transcription
+    transcription_id (str): The unique ID of the transcription.
+    transcription (str): The transcription of the phrase.
+    phrase_audio_file_path_wav (str): The path to the .wav file of the phrase audio.
+    start_time (float): The start time of the phrase in the full audio file.
+    index (int): The index of the phrase in the transcription.
+    detected_language (str): The language detected in the phrase.
+    translation (str): The translation of the phrase to English.
+    phrase_audio_started (bool): True if the phrase audio file has started being written.
 """
 class Phrase:
-    def __init__(self, transcription, full_audio_file_path_webm, phrase_audio_file_path_wav, transcription_id, start_time=0, index=0):
-        self.transcription = transcription
-        self.full_audio_file_path_webm = full_audio_file_path_webm
+    def __init__(self, transcription_id, phrase_audio_file_path_wav, start_time=0, index=0):
+        self.transcription_id = transcription_id
+        self.transcription = ''
         self.phrase_audio_file_path_wav = phrase_audio_file_path_wav
         self.start_time = start_time
         self.index = index
-        self.transcription_id = transcription_id
         self.detected_language = None
         self.translation = None
         self.phrase_audio_started = False
 
-    # Construct a phrase given the client_id. Generates file paths.
-    # Used for the first phrase in a transcription.
-    @classmethod
-    def create_first_phrase(cls, client_id):
-        transcription = ''
-        index = 0
-        transcription_id = str(uuid.uuid4())
-        full_audio_file_path_webm = f'audio/audio_file_{client_id}_{transcription_id}.webm'
-        phrase_audio_file_path_wav = f'audio/audio_file_{client_id}_{transcription_id}_{index}.wav'
-        start_time = 0
-        return cls(transcription, full_audio_file_path_webm, phrase_audio_file_path_wav, transcription_id, start_time, index)
-
-    # Construct a phrase given the client_id, full audio file path, and start time.
-    # Used when starting a new phrase from an existing audio file.
-    @classmethod
-    def create_subsequent_phrase(cls, client_id, full_audio_file_path_webm, start_time, index, transcription_id):
-        transcription = ''
-        index = index
-        transcription_id = transcription_id
-        full_audio_file_path_webm = full_audio_file_path_webm
-        phrase_audio_file_path_wav = f'audio/audio_file_{client_id}_{transcription_id}_{index}.wav'
-        start_time = start_time
-
-        return cls(transcription, full_audio_file_path_webm, phrase_audio_file_path_wav, transcription_id, start_time, index)
-
-    """Create a phrase from a wav file without a webm file, useful for testing"""
-    @classmethod
-    def create_phrase_from_wav_file(cls, wav_file_path):
-        transcription = ''
-        index = 0
-        transcription_id = str(uuid.uuid4())
-        full_audio_file_path_webm = None
-        phrase_audio_file_path_wav = wav_file_path
-        start_time = 0
-        return cls(transcription, full_audio_file_path_webm, phrase_audio_file_path_wav, transcription_id, start_time, index)
-            
-    """Writes the given audio chunk to the phrase audio file and the full audio file."""
-    def write_audio_chunk(self, audio_chunk):
-        # Append the audio chunk to the full webm audio file
-        with open(self.full_audio_file_path_webm, 'ab') as audio_file:
-            audio_file.write(audio_chunk)
-
-    def write_phrase_audio_file(self):
-        # Take the full audio file and slice it to get the phrase audio file then save it as a .wav
-        webm_audio = AudioSegment.from_file(self.full_audio_file_path_webm, format="webm")
+    """Writes the phrase audio file to disk as a .wav file by slicing the full audio file from the start time."""
+    def write_phrase_audio_file(self, full_audio_file_path_webm):
+        webm_audio = AudioSegment.from_file(full_audio_file_path_webm, format="webm")
         sliced_webm_audio = webm_audio[self.start_time * 1000:]
         wav_audio = sliced_webm_audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)
         wav_audio.export(self.phrase_audio_file_path_wav, format="wav")
         if is_silent(self.phrase_audio_file_path_wav) and not self.phrase_audio_started:
-            print('Silent audio chunk detected, not writing to file')
             self.start_time += wav_audio.duration_seconds
             os.remove(self.phrase_audio_file_path_wav)
         else:
-            print('First non-silent audio chunk detected, starting phrase audio file')
             self.phrase_audio_started = True
 
+    """Returns the duration of the phrase audio file in seconds."""
     def get_duration(self):
+        if not os.path.exists(self.phrase_audio_file_path_wav):
+            return 0
         wav_audio = AudioSegment.from_file(self.phrase_audio_file_path_wav, format="wav")
         return wav_audio.duration_seconds
 
+    """Returns True if the phrase audio file ends with a major pause."""
+    def ends_with_major_pause(self):
+        return ends_with_major_pause(self.phrase_audio_file_path_wav, pause_length_threshold=PAUSE_LENGTH_THRESHOLD)
+
+    """Transcribes the phrase using the whisper model."""
     @log_performance_decorator(log_performance_metric)
     def transcribe(self):
         self.transcription =  TRANSCRIPTION_MODEL.transcribe(self.phrase_audio_file_path_wav, fp16=use_fp16)["text"]
 
-    def transcribe_multilingual(self):
-        return TRANSCRIPTION_MODEL.transcribe(self.phrase_audio_file_path_wav, fp16=use_fp16, initial_prompt='The following text is a transcription containing both english and french. Ne pas traduire le Français.')
-
-
     """Detects the language of the phrase and translates it to English if necessary."""
-    def detect_language_and_translate(self, translation_callback, start_translation_callback):
+    def detect_language_and_translate(self, translation_callback):
         self.detected_language = self.detect_language(self.transcription)
-        print(f'Detected language: {self.detected_language}')
         if self.detected_language != 'en':
-            start_translation_callback({'index': self.index})
             self.translation = self.translate_text(self.transcription)
-            print(f'Translation: {self.translation}')
-            translation_callback({'index': self.index, 'translation': self.translation})
-
+            translation_callback(self.serialize())
 
     """Detects the language of the given text using the fasttext model."""
     def detect_language(self, text):
@@ -146,79 +101,105 @@ class Phrase:
         result = response.json()
         return result['translations'][0]['text']
 
+    """Serializes the phrase to a dictionary."""
     def serialize(self):
         return {
+            'transcription_id': self.transcription_id,
             'transcription': self.transcription,
             'start_time': self.start_time,
             'index': self.index,
-            'transcription_id': self.transcription_id,
             'detected_language': self.detected_language,
             'translation': self.translation
         }
-    
-class TranscriptionProcessor:
-    def __init__(self, client_id, transcription_callback, start_translation_callback, translation_callback):
+
+"""Represents a transcription.
+Attributes:
+    unique_id (str): The unique ID of the transcription.
+    client_id (str): The ID of the client that initiated the transcription.
+    phrases (list): A list of phrases in the transcription.
+    full_audio_file_path_webm (str): The path to the full audio file in webm format.
+"""
+class Transcription:
+    def __init__(self, client_id):
+        self.unique_id = str(uuid.uuid4())
         self.client_id = client_id
+        self.phrases = []
+        self.phrases.append(self.create_phrase())
+        self.full_audio_file_path_webm = f'audio/audio_file_{client_id}_{self.unique_id}.webm'
+
+    """Creates a new phrase with the given start time."""
+    def create_phrase(self, start_time=0):
+        index = len(self.phrases)
+        phrase_audio_file_path_wav = f'audio/audio_file_{self.client_id}_{self.unique_id}_{index}.wav'
+        return Phrase(self.unique_id, phrase_audio_file_path_wav, start_time, index)
+
+    """Adds a new phrase to the transcription."""
+    def add_phrase(self):
+        self.phrases.append(self.create_phrase(start_time=self.last_phrase().start_time + self.last_phrase().get_duration()))
+
+    """Returns the last phrase in the transcription."""
+    def last_phrase(self):
+        return self.phrases[-1]
+
+    """Writes the given audio chunk to the full audio file."""
+    def write_audio_chunk(self, audio_chunk):
+        # Append the audio chunk to the full webm audio file
+        with open(self.full_audio_file_path_webm, 'ab') as audio_file:
+            audio_file.write(audio_chunk)
+
+    """Appends the given audio chunk to the full audio file and transcribes the last phrase."""
+    def append_audio_and_transcribe(self, audio_chunk):
+        self.write_audio_chunk(audio_chunk)
+        self.last_phrase().write_phrase_audio_file(self.full_audio_file_path_webm)
+
+        if self.last_phrase().phrase_audio_started:
+            self.last_phrase().transcribe()
+
+    """Returns True if the last phrase is complete. A phrase is complete if it is at least 3 seconds long and ends with a major pause.
+    or if it is at least 20 seconds long."""
+    def phrase_complete(self):
+        return self.last_phrase().get_duration() >= MIN_PHRASE_LENGTH_SECONDS and \
+            (self.last_phrase().ends_with_major_pause() or self.last_phrase().get_duration() >= MAX_PHRASE_LENGTH_SECONDS)
+
+    """Returns True if the last phrase ends with a major pause."""
+    def ends_with_major_pause(self):
+        return self.last_phrase().ends_with_major_pause()
+
+    """Serializes the transcription to a dictionary."""
+    def serialize(self):
+        return {
+            'unique_id': self.unique_id,
+            'phrases': [phrase.serialize() for phrase in self.phrases]
+        }
+    
+"""Represents a transcription processor. Responsible for asynchronously processing audio chunks and transcribing them.
+Attributes:
+    client_id (str): The ID of the client that initiated the transcription.
+    transcription (Transcription): The transcription being processed.
+    processing_audio_queue (bool): True if the audio queue is being processed.
+    transcription_callback (function): The callback function to call when a transcription is updated.
+    translation_callback (function): The callback function to call when a phrase is translated.
+    audio_queue_timeout (int): The maximum time to process the audio queue in seconds.
+    audio_queue_time_without_audio (int): The time without audio in the audio queue in seconds.
+    audio_queue (TranscriptionAudioQueue): The audio queue.
+"""
+class TranscriptionProcessor:
+    def __init__(self, client_id, transcription_callback, translation_callback):
+        self.client_id = client_id
+        self.transcription = Transcription(client_id)
         self.processing_audio_queue = False
-        self.phrases = [Phrase.create_first_phrase(client_id)]
         self.transcription_callback = transcription_callback
-        self.start_translation_callback = start_translation_callback
         self.translation_callback = translation_callback
         self.audio_queue_timeout = 60 # seconds
         self.audio_queue_time_without_audio = 0 # seconds
         self.audio_queue = TranscriptionAudioQueue()
 
-    def current_phrase(self):
-        return self.phrases[-1]
-
-    def stop_transcription(self):
-        self.stop_process_audio_queue()
-
-        return
-
-    def queue_audio(self, audio_data):
-        self.audio_queue.add_audio(audio_data)
-
-    """Appends the audio_data (webm, 16khz) to the current phrase file,
-    creating a new file if necessary (wav, 16khz).
-    """
-    def append_audio(self, audio_chunk):
-        self.current_phrase().write_audio_chunk(audio_chunk)
-        self.current_phrase().write_phrase_audio_file()
-
-        if self.current_phrase().phrase_audio_started:
-            self.current_phrase().transcribe()
-            self.transcription_callback(self.current_phrase().serialize())
-
-            # Decide whether we should start a new phrase
-            # We won't even consider starting a new phrase if the current phrase is too short
-            if self.current_phrase().get_duration() > MIN_PHRASE_LENGTH_SECONDS:
-                # Try to start a new phrase on a major pause by checking the current audio chunk
-                # After a certain timeout, start a new phrase regardless of pause
-                if ends_with_major_pause(self.current_phrase().phrase_audio_file_path_wav, pause_length_threshold=PAUSE_LENGTH_THRESHOLD) or self.current_phrase().get_duration() > MAX_PHRASE_LENGTH_SECONDS:    
-                    translation_thread = threading.Thread(target=self.current_phrase().detect_language_and_translate,
-                                                        args=(self.translation_callback, self.start_translation_callback))
-                    translation_thread.start()
-                    self.start_new_phrase()
-                    self.transcription_callback(self.current_phrase().serialize())
-
-
-    def start_new_phrase(self):
-        # Start a new audio file for the next phrase
-        current_phrase = self.current_phrase()
-
-        self.phrases.append(Phrase.create_subsequent_phrase(
-            self.client_id,
-            current_phrase.full_audio_file_path_webm,
-            current_phrase.start_time + current_phrase.get_duration(),
-            current_phrase.index + 1,
-            current_phrase.transcription_id))
-    
-    # Start processing the audio queue. Intended to be run continuously in a separate thread.
+    """Starts processing the audio queue."""
     def start_process_audio_queue(self):
         self.thread = threading.Thread(target=self.process_audio_queue)
         self.thread.start()
 
+    """Processes the audio queue."""
     def process_audio_queue(self):
         self.processing_audio_queue = True
         while self.processing_audio_queue and self.audio_queue_time_without_audio < self.audio_queue_timeout:
@@ -231,9 +212,26 @@ class TranscriptionProcessor:
                 time.sleep(0.1)
         self.stop_process_audio_queue()
 
+    """Stops processing the audio queue."""
     def stop_process_audio_queue(self):
         self.processing_audio_queue = False
         self.audio_queue_time_without_audio = 0
+
+    """Queues the given audio data."""
+    def queue_audio(self, audio_data):
+        self.audio_queue.add_audio(audio_data)
+
+    """Appends the given audio chunk to the transcription and performs transcription and translation as needed."""
+    def append_audio(self, audio_chunk):
+        self.transcription.append_audio_and_transcribe(audio_chunk)
+        self.transcription_callback(self.transcription.last_phrase().serialize())
+
+        if self.transcription.phrase_complete():
+            translation_thread = threading.Thread(target=self.transcription.last_phrase().detect_language_and_translate, args=(self.translation_callback,))
+            translation_thread.start()
+            self.transcription.add_phrase()
+            self.transcription_callback(self.transcription.last_phrase().serialize())
+
 
 class TranscriptionManager:
     def __init__(self):
