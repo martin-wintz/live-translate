@@ -6,16 +6,18 @@ import uuid
 import requests
 from pydub import AudioSegment
 import whisper
-from audio_utils import is_silent, ends_with_major_pause
+from audio_utils import ends_with_major_pause, is_silent
 from log_utils import log_performance_decorator, log_performance_metric
 import fasttext
-import aiohttp
-import asyncio
 import os
 
 TRANSCRIPTION_MODEL = whisper.load_model('base') # CUDA
 # TRANSCRIPTION_MODEL = whisper.load_model('tiny.en') # CPU
 LANGUAGE_DETECTION_MODEL = fasttext.load_model('lid.176.ftz')
+
+MIN_PHRASE_LENGTH_SECONDS = 3
+MAX_PHRASE_LENGTH_SECONDS = 20
+PAUSE_LENGTH_THRESHOLD = 0.7
 
 
 # TODO: Automatically detect if GPU is available
@@ -42,6 +44,7 @@ class Phrase:
         self.transcription_id = transcription_id
         self.detected_language = None
         self.translation = None
+        self.phrase_audio_started = False
 
     # Construct a phrase given the client_id. Generates file paths.
     # Used for the first phrase in a transcription.
@@ -67,6 +70,17 @@ class Phrase:
         start_time = start_time
 
         return cls(transcription, full_audio_file_path_webm, phrase_audio_file_path_wav, transcription_id, start_time, index)
+
+    """Create a phrase from a wav file without a webm file, useful for testing"""
+    @classmethod
+    def create_phrase_from_wav_file(cls, wav_file_path):
+        transcription = ''
+        index = 0
+        transcription_id = str(uuid.uuid4())
+        full_audio_file_path_webm = None
+        phrase_audio_file_path_wav = wav_file_path
+        start_time = 0
+        return cls(transcription, full_audio_file_path_webm, phrase_audio_file_path_wav, transcription_id, start_time, index)
             
     """Writes the given audio chunk to the phrase audio file and the full audio file."""
     def write_audio_chunk(self, audio_chunk):
@@ -74,11 +88,19 @@ class Phrase:
         with open(self.full_audio_file_path_webm, 'ab') as audio_file:
             audio_file.write(audio_chunk)
 
+    def write_phrase_audio_file(self):
         # Take the full audio file and slice it to get the phrase audio file then save it as a .wav
         webm_audio = AudioSegment.from_file(self.full_audio_file_path_webm, format="webm")
         sliced_webm_audio = webm_audio[self.start_time * 1000:]
         wav_audio = sliced_webm_audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)
         wav_audio.export(self.phrase_audio_file_path_wav, format="wav")
+        if is_silent(self.phrase_audio_file_path_wav) and not self.phrase_audio_started:
+            print('Silent audio chunk detected, not writing to file')
+            self.start_time += wav_audio.duration_seconds
+            os.remove(self.phrase_audio_file_path_wav)
+        else:
+            print('First non-silent audio chunk detected, starting phrase audio file')
+            self.phrase_audio_started = True
 
     def get_duration(self):
         wav_audio = AudioSegment.from_file(self.phrase_audio_file_path_wav, format="wav")
@@ -88,15 +110,19 @@ class Phrase:
     def transcribe(self):
         self.transcription =  TRANSCRIPTION_MODEL.transcribe(self.phrase_audio_file_path_wav, fp16=use_fp16)["text"]
 
+    def transcribe_multilingual(self):
+        return TRANSCRIPTION_MODEL.transcribe(self.phrase_audio_file_path_wav, fp16=use_fp16, initial_prompt='The following text is a transcription containing both english and french. Ne pas traduire le Français.')
+
+
     """Detects the language of the phrase and translates it to English if necessary."""
     def detect_language_and_translate(self, translation_callback, start_translation_callback):
         self.detected_language = self.detect_language(self.transcription)
         print(f'Detected language: {self.detected_language}')
         if self.detected_language != 'en':
-            start_translation_callback({'index': self.index})  # Emit event before starting translation
-            self.translation = self.translate_text(self.transcription)  # Synchronous call
+            start_translation_callback({'index': self.index})
+            self.translation = self.translate_text(self.transcription)
             print(f'Translation: {self.translation}')
-            translation_callback({'index': self.index, 'translation': self.translation})  # Emit event after translation
+            translation_callback({'index': self.index, 'translation': self.translation})
 
 
     """Detects the language of the given text using the fasttext model."""
@@ -148,16 +174,6 @@ class TranscriptionProcessor:
     def stop_transcription(self):
         self.stop_process_audio_queue()
 
-        # clean up audio files
-        # for phrase in self.phrases:
-        #     try:
-        #         os.remove(phrase.phrase_audio_file_path_wav)
-        #         os.remove(phrase.full_audio_file_path_webm)
-        #     except FileNotFoundError as e:
-        #         print(e)
-        #         print('No file not found for cleanup, skipping')
-        #         continue
-
         return
 
     def queue_audio(self, audio_data):
@@ -168,26 +184,24 @@ class TranscriptionProcessor:
     """
     def append_audio(self, audio_chunk):
         self.current_phrase().write_audio_chunk(audio_chunk)
+        self.current_phrase().write_phrase_audio_file()
 
-        if not is_silent(self.current_phrase().phrase_audio_file_path_wav):
-            print('Not silent, transcribing')
+        if self.current_phrase().phrase_audio_started:
             self.current_phrase().transcribe()
-            # TODO (performance): Keep track of full transcription on client as well so we don't have to always send the whole thing
             self.transcription_callback(self.current_phrase().serialize())
-        else:
-            print('Silent audio chunk detected, skipping transcription')
 
-        # Decide whether we should start a new phrase
-        # We won't even consider starting a new phrase if the current phrase is too short
-        if self.current_phrase().get_duration() > 5:
-            # Try to start a new phrase on a major pause by checking the current audio chunk
-            # After a certain timeout, start a new phrase regardless of pause
-            if ends_with_major_pause(self.current_phrase().phrase_audio_file_path_wav) or self.current_phrase().get_duration() > 20:    
-                translation_thread = threading.Thread(target=self.current_phrase().detect_language_and_translate,
-                                                    args=(self.translation_callback, self.start_translation_callback))
-                translation_thread.start()
-                self.start_new_phrase()
-                self.transcription_callback(self.current_phrase().serialize())
+            # Decide whether we should start a new phrase
+            # We won't even consider starting a new phrase if the current phrase is too short
+            if self.current_phrase().get_duration() > MIN_PHRASE_LENGTH_SECONDS:
+                # Try to start a new phrase on a major pause by checking the current audio chunk
+                # After a certain timeout, start a new phrase regardless of pause
+                if ends_with_major_pause(self.current_phrase().phrase_audio_file_path_wav, pause_length_threshold=PAUSE_LENGTH_THRESHOLD) or self.current_phrase().get_duration() > MAX_PHRASE_LENGTH_SECONDS:    
+                    translation_thread = threading.Thread(target=self.current_phrase().detect_language_and_translate,
+                                                        args=(self.translation_callback, self.start_translation_callback))
+                    translation_thread.start()
+                    self.start_new_phrase()
+                    self.transcription_callback(self.current_phrase().serialize())
+
 
     def start_new_phrase(self):
         # Start a new audio file for the next phrase

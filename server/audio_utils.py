@@ -1,5 +1,6 @@
 import wave
 import webrtcvad
+from pydub import AudioSegment
 
 
 """Returns True if the audio file is silent.
@@ -8,25 +9,42 @@ Parameters:
     speech_frame_threshold (int): The number of speech frames required to consider the audio file not silent. Vad is very sensitive even on the highest aggressiveness level, so false positive frames are common. Defaults to 10.
 """
 def is_silent(wav_file_path, speech_frame_threshold=10):
-    vad = webrtcvad.Vad(3)  # Use a higher aggressiveness level
+    vad = webrtcvad.Vad(3)  # High aggressiveness level
     frame_duration = 30  # Duration of a frame in milliseconds
-    sample_rate = 16000  # Assumed sample rate of the audio
-    n_frames = int(sample_rate * frame_duration / 1000)
     num_speech_frames = 0
 
-    with wave.open(wav_file_path, 'rb') as f:
-        frames = list(wave_read_frames(f, n_frames))
+    # Open WAV file
+    with wave.open(wav_file_path, 'rb') as wav_file:
+        sample_rate = wav_file.getframerate()
+        n_channels = wav_file.getnchannels()
+        sampwidth = wav_file.getsampwidth()
 
-    for frame in frames:
+        if sample_rate not in [8000, 16000, 32000, 48000] or n_channels != 1 or sampwidth != 2:
+            raise ValueError("Unsupported audio format. Ensure 8000, 16000, 32000, or 48000 Hz sample rate, mono channel, and 16-bit depth.")
+
+        # Calculate number of samples per frame
+        samples_per_frame = sample_rate * frame_duration // 1000
+        frame_bytes = samples_per_frame * n_channels * sampwidth
+        
+        frames = []
+        audio_data = wav_file.readframes(wav_file.getnframes())
+        
+        # Split the audio data into frames
+        for i in range(0, len(audio_data), frame_bytes):
+            frames.append(audio_data[i:i+frame_bytes])
+
+
+    for index, frame in enumerate(frames):
         try:
             if vad.is_speech(frame, sample_rate):
                 num_speech_frames += 1
                 if num_speech_frames >= speech_frame_threshold:
                     return False  # Not silent, as we have enough speech frames
         except Exception as e:
-            print(f'VadError: Skipping frame {e}')
+            print(f'Frame {index}: VadError - Skipping frame due to error: {e}')
 
-    return True 
+    return True
+
 
 """Returns True if the last pause_length_threshold seconds of the audio file are silent.
 
