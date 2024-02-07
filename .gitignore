@@ -10,6 +10,7 @@ db.sqlite3-journal
 .vscode/
 audio/*
 performance_log.txt
+lid.176.ftz
 
 # Flask-specific
 server/instance/
