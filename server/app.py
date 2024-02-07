@@ -3,11 +3,8 @@ from flask import Flask, send_from_directory, request, session
 from flask_socketio import SocketIO, join_room
 from flask_cors import CORS
 import os
-from pydub import AudioSegment
-from queue import Queue
-import threading
-from transcription import TranscriptionManager, TranscriptionProcessor, TranscriptionAudioQueue
-from pydub import AudioSegment
+from transcription import TranscriptionManager, TranscriptionProcessor
+from tinydb import TinyDB, Query
 
 app = Flask(__name__, static_folder='../app/build')
 app.config['SECRET_KEY'] = 'secret!'
@@ -15,6 +12,8 @@ app.config['SECRET_KEY'] = 'secret!'
 app.config['SESSION_COOKIE_SECURE'] = False # Dev only
 socketio = SocketIO(app, cors_allowed_origins=["http://localhost:3000"])
 CORS(app, supports_credentials=True)
+
+db = TinyDB('db.json')
 
 if not os.path.exists('audio'):
     os.makedirs('audio')
@@ -66,6 +65,11 @@ def stop_recording():
         processor.stop_process_audio_queue()
         processor = None
     return {'status': 'success'}
+
+@app.route('/transcriptions', methods=['GET'])
+def get_transcriptions():
+    transcriptions = transcription_manager.get_transcriptions_dict(session['client_id'])
+    return {'transcriptions': transcriptions}
 
 @app.route('/init_session', methods=['POST'])
 def init_session():

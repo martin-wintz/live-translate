@@ -118,6 +118,26 @@ class Phrase:
             'phrase_audio_file_path_wav': self.phrase_audio_file_path_wav
         }
 
+    @classmethod
+    def deserialize(cls, phrase_dict):
+        """
+        Creates a Phrase instance from a serialized dictionary.
+        """
+        # Create a new Phrase instance with basic attributes
+        phrase = cls(
+            transcription_id=phrase_dict['transcription_id'],
+            phrase_audio_file_path_wav=phrase_dict['phrase_audio_file_path_wav'],
+            start_time=phrase_dict.get('start_time', 0),
+            index=phrase_dict.get('index', 0)
+        )
+        # Set additional attributes
+        phrase.transcription = phrase_dict.get('transcription', '')
+        phrase.detected_language = phrase_dict.get('detected_language', None)
+        phrase.translation = phrase_dict.get('translation', None)
+        phrase.phrase_audio_started = phrase_dict.get('phrase_audio_started', False)
+        
+        return phrase
+
 """Represents a transcription.
 Attributes:
     unique_id (str): The unique ID of the transcription.
@@ -182,6 +202,27 @@ class Transcription:
             'phrases': [phrase.serialize() for phrase in self.phrases]
         }
 
+    @classmethod
+    def deserialize(cls, transcription_dict):
+        """
+        Creates a Transcription instance from a serialized dictionary.
+        """
+        client_id = transcription_dict['client_id']
+        
+        transcription = cls(client_id)
+        transcription.unique_id = transcription_dict['unique_id']
+        transcription.client_id = client_id
+        transcription.full_audio_file_path_webm = transcription_dict['full_audio_file_path_webm']
+        transcription.timestamp = transcription_dict['timestamp']
+        
+        # Clear the automatically added phrase and rebuild phrases from the serialized data
+        transcription.phrases.clear()
+        for phrase_data in transcription_dict['phrases']:
+            phrase = Phrase.deserialize(phrase_data)
+            transcription.phrases.append(phrase)
+        
+        return transcription
+
     """Saves the transcription to the database. If the transcription already exists, it is updated. Otherwise, it is inserted."""
     def save_to_db(self):
         TranscriptionDB = Query()
@@ -233,6 +274,7 @@ class TranscriptionProcessor:
 
     """Stops processing the audio queue."""
     def stop_process_audio_queue(self):
+        self.transcription.save_to_db()
         self.processing_audio_queue = False
         self.audio_queue_time_without_audio = 0
 
@@ -252,7 +294,6 @@ class TranscriptionProcessor:
             self.transcription.add_phrase()
             self.transcription_callback(self.transcription.last_phrase().serialize())
 
-
 class TranscriptionManager:
     def __init__(self):
         self.processors = {}
@@ -270,6 +311,11 @@ class TranscriptionManager:
         with self.lock:
             if client_id in self.processors:
                 del self.processors[client_id]
+
+    def get_transcriptions_dict(self, client_id):
+        results = db.search(Query().client_id == client_id)
+        return results
+
 
 class TranscriptionAudioQueue:
     def __init__(self):
