@@ -10,6 +10,9 @@ from audio_utils import ends_with_major_pause, is_silent
 from log_utils import log_performance_decorator, log_performance_metric
 import fasttext
 import os
+from tinydb import TinyDB, Query
+
+db = TinyDB('db.json')
 
 TRANSCRIPTION_MODEL = whisper.load_model('base') # CUDA
 # TRANSCRIPTION_MODEL = whisper.load_model('tiny.en') # CPU
@@ -44,6 +47,7 @@ class Phrase:
         self.detected_language = None
         self.translation = None
         self.phrase_audio_started = False
+        self.timestamp = time.time()
 
     """Writes the phrase audio file to disk as a .wav file by slicing the full audio file from the start time."""
     def write_phrase_audio_file(self, full_audio_file_path_webm):
@@ -109,7 +113,9 @@ class Phrase:
             'start_time': self.start_time,
             'index': self.index,
             'detected_language': self.detected_language,
-            'translation': self.translation
+            'translation': self.translation,
+            'timestamp': self.timestamp,
+            'phrase_audio_file_path_wav': self.phrase_audio_file_path_wav
         }
 
 """Represents a transcription.
@@ -126,6 +132,7 @@ class Transcription:
         self.phrases = []
         self.phrases.append(self.create_phrase())
         self.full_audio_file_path_webm = f'audio/audio_file_{client_id}_{self.unique_id}.webm'
+        self.timestamp = time.time()
 
     """Creates a new phrase with the given start time."""
     def create_phrase(self, start_time=0):
@@ -169,8 +176,20 @@ class Transcription:
     def serialize(self):
         return {
             'unique_id': self.unique_id,
+            'client_id': self.client_id,
+            'timestamp': self.timestamp,
+            'full_audio_file_path_webm': self.full_audio_file_path_webm,
             'phrases': [phrase.serialize() for phrase in self.phrases]
         }
+
+    """Saves the transcription to the database. If the transcription already exists, it is updated. Otherwise, it is inserted."""
+    def save_to_db(self):
+        TranscriptionDB = Query()
+        existing_transcription = db.search(TranscriptionDB.unique_id == self.unique_id)
+        if existing_transcription:
+            db.update({'phrases': [phrase.serialize() for phrase in self.phrases]}, TranscriptionDB.unique_id == self.unique_id)
+        else:
+            db.insert(self.serialize())
     
 """Represents a transcription processor. Responsible for asynchronously processing audio chunks and transcribing them.
 Attributes:
@@ -227,6 +246,7 @@ class TranscriptionProcessor:
         self.transcription_callback(self.transcription.last_phrase().serialize())
 
         if self.transcription.phrase_complete():
+            self.transcription.save_to_db()
             translation_thread = threading.Thread(target=self.transcription.last_phrase().detect_language_and_translate, args=(self.translation_callback,))
             translation_thread.start()
             self.transcription.add_phrase()
