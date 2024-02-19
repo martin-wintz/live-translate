@@ -7,8 +7,7 @@ const server = 'http://localhost:5555';
 const socket = io(server);
 
 axios.defaults.withCredentials = true;
-axios.defaults.root = server;
-
+axios.defaults.baseURL = server;
 
 function App() {
   const [recording, setRecording] = useState(false);
