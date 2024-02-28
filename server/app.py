@@ -56,7 +56,7 @@ def start_recording():
     processor = TranscriptionProcessor(session['client_id'], transcription_callback, translation_callback)
     processor.start_process_audio_queue()
     transcription_manager.set_processor(session['client_id'], processor)
-    return {'status': 'success'}
+    return {'transcription': processor.transcription.serialize(), 'status': 'success'}
 
 @app.route('/stop_recording', methods=['POST'])
 def stop_recording():

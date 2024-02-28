@@ -108,14 +108,13 @@ class Phrase:
     """Serializes the phrase to a dictionary."""
     def serialize(self):
         return {
-            'transcription_id': self.transcription_id,
+            'transcriptionId': self.transcription_id,
             'transcription': self.transcription,
-            'start_time': self.start_time,
+            'startTime': self.start_time,
             'index': self.index,
-            'detected_language': self.detected_language,
+            'detectedLanguage': self.detected_language,
             'translation': self.translation,
-            'timestamp': self.timestamp,
-            'phrase_audio_file_path_wav': self.phrase_audio_file_path_wav
+            'timestamp': self.timestamp
         }
 
     @classmethod
@@ -195,12 +194,11 @@ class Transcription:
     """Serializes the transcription to a dictionary."""
     def serialize(self):
         return {
-            'unique_id': self.unique_id,
-            'client_id': self.client_id,
+            'uniqueId': self.unique_id,
             'timestamp': self.timestamp,
-            'full_audio_file_path_webm': self.full_audio_file_path_webm,
             'phrases': [phrase.serialize() for phrase in self.phrases]
         }
+
 
     @classmethod
     def deserialize(cls, transcription_dict):
