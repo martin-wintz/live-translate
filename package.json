@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "inquirer": "^9.2.15"
+  }
+}
