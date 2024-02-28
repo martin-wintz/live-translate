@@ -29,17 +29,17 @@ server/*.sqlite
 server/audio/*
 
 # React-specific
-client/node_modules/
-client/.env.local
-client/.env.development.local
-client/.env.test.local
-client/.env.production.local
-client/npm-debug.log*
-client/yarn-debug.log*
-client/yarn-error.log*
-client/package-lock.json
-client/yarn.lock
-client/build/
+app/node_modules/
+app/.env.local
+app/.env.development.local
+app/.env.test.local
+app/.env.production.local
+app/npm-debug.log*
+app/yarn-debug.log*
+app/yarn-error.log*
+app/package-lock.json
+app/yarn.lock
+app/build/
 
 # macOS specific
 .DS_Store
@@ -56,5 +56,4 @@ Desktop.ini
 
 # Visual Studio Code
 .vscode/
-db.json
 db.json
