@@ -1,15 +1,36 @@
-import React, { useEffect, FC } from "react";
+import React, {
+  useEffect,
+  FC,
+  useState,
+  Dispatch,
+  SetStateAction,
+} from "react";
 import { initializeSession } from "../../api";
 import useLiveTranscriptionEvents from "./UseLiveTranscriptionEvents";
 import useRecording from "./UseRecording";
 import socket from "../../socket";
+import { Transcription } from "../../types";
 
-const LiveTranscriptionScreen: FC = () => {
-  const [clientId, setClientId] = React.useState("");
-  const { transcription, setTranscription } = useLiveTranscriptionEvents();
-  const { recording, handleStartRecording, handleStopRecording } = useRecording(
+interface LiveTranscriptionScreenProps {
+  transcription: Transcription | null;
+  setTranscription: Dispatch<SetStateAction<Transcription | null>>;
+  recording: boolean;
+  setRecording: Dispatch<SetStateAction<boolean>>;
+}
+
+const LiveTranscriptionScreen: FC<LiveTranscriptionScreenProps> = ({
+  transcription,
+  setTranscription,
+  recording,
+  setRecording,
+}) => {
+  const [clientId, setClientId] = useState("");
+  useLiveTranscriptionEvents(transcription, setTranscription);
+  const { handleStartRecording, handleStopRecording } = useRecording(
     clientId,
     setTranscription,
+    recording,
+    setRecording,
   );
 
   useEffect(() => {

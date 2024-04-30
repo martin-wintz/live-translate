@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Dispatch, SetStateAction } from "react";
 import { startRecording, stopRecording } from "../../api";
 import socket from "../../socket";
 import { Transcription } from "../../types";
@@ -10,9 +10,9 @@ import {
 const useRecording = (
   clientId: string,
   setTranscription: (transcription: Transcription) => void,
+  recording: boolean,
+  setRecording: Dispatch<SetStateAction<boolean>>,
 ) => {
-  const [recording, setRecording] = useState(false);
-
   const onArrayBuffer = (arrayBuffer: ArrayBuffer) => {
     socket.emit("audio_chunk", {
       clientId,

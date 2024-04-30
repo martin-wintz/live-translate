@@ -15,6 +15,7 @@ module.exports = {
         node: true,
       },
       files: [".eslintrc.{js,cjs}"],
+      ignorePatterns: ["postcss.config.js"],
       parserOptions: {
         sourceType: "script",
       },

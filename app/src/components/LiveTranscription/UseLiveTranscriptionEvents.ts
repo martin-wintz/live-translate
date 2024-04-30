@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, Dispatch, SetStateAction } from "react";
 import { Transcription } from "../../types";
 import socket from "../../socket";
 
@@ -8,11 +8,10 @@ import socket from "../../socket";
  * @returns transcription: The current transcription object
  * @returns setTranscription: Function to update the transcription object
  **/
-const useLiveTranscriptionEvents = () => {
-  const [transcription, setTranscription] = useState<Transcription | null>(
-    null,
-  );
-
+const useLiveTranscriptionEvents = (
+  transcription: Transcription | null = null,
+  setTranscription: Dispatch<SetStateAction<Transcription | null>>,
+) => {
   useEffect(() => {
     // Once a phrase is done transcribing, the server will translate it if necessary
     // Listen for translation events and add them to the corresponding phrase
