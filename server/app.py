@@ -53,6 +53,7 @@ def translation_callback(phrase):
 # ----------------- API -----------------
 @app.route('/start_recording', methods=['POST'])
 def start_recording():
+    print ('Start recording for client: ', session['client_id'])
     processor = TranscriptionProcessor(session['client_id'], transcription_callback, translation_callback)
     processor.start_process_audio_queue()
     transcription_manager.set_processor(session['client_id'], processor)
@@ -68,6 +69,7 @@ def stop_recording():
 
 @app.route('/transcriptions', methods=['GET'])
 def get_transcriptions():
+    print (f'Get transcriptions for client: {session["client_id"]}')
     transcriptions = transcription_manager.get_transcriptions_dict(session['client_id'])
     return {'transcriptions': transcriptions}
 
@@ -76,6 +78,7 @@ def init_session():
     # Generate a random client id and store it in the session
     if 'client_id' not in session:
         session['client_id'] = str(uuid.uuid4())
+    print (f'Client ID: {session["client_id"]}')
     return {'client_id': session['client_id']}
 
 @app.route('/')

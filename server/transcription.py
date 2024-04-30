@@ -195,6 +195,7 @@ class Transcription:
     def serialize(self):
         return {
             'uniqueId': self.unique_id,
+            'clientId': self.client_id,
             'timestamp': self.timestamp,
             'phrases': [phrase.serialize() for phrase in self.phrases]
         }
@@ -224,9 +225,10 @@ class Transcription:
     """Saves the transcription to the database. If the transcription already exists, it is updated. Otherwise, it is inserted."""
     def save_to_db(self):
         TranscriptionDB = Query()
-        existing_transcription = db.search(TranscriptionDB.unique_id == self.unique_id)
+        existing_transcription = db.search(TranscriptionDB.uniqueId == self.unique_id)
+
         if existing_transcription:
-            db.update({'phrases': [phrase.serialize() for phrase in self.phrases]}, TranscriptionDB.unique_id == self.unique_id)
+            db.update({'phrases': [phrase.serialize() for phrase in self.phrases]}, TranscriptionDB.uniqueId == self.unique_id)
         else:
             db.insert(self.serialize())
     
@@ -311,7 +313,7 @@ class TranscriptionManager:
                 del self.processors[client_id]
 
     def get_transcriptions_dict(self, client_id):
-        results = db.search(Query().client_id == client_id)
+        results = db.search(Query().clientId == client_id)
         return results
 
 

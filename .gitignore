@@ -9,6 +9,7 @@ db.sqlite3-journal
 .idea/
 .vscode/
 audio/*
+audio/
 performance_log.txt
 lid.176.ftz
 

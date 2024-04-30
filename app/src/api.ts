@@ -17,3 +17,8 @@ export const startRecording = async () => {
 export const stopRecording = async () => {
   await axios.post("/stop_recording");
 };
+
+export const fetchTranscriptions = async () => {
+  const response = await axios.get("/transcriptions");
+  return response.data;
+};
