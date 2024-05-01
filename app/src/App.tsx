@@ -95,7 +95,7 @@ const App: React.FC = () => {
         onCreateNew={handleCreateNew}
         onSelectTranscription={selectTranscription}
       />
-      <main className="flex-1 bg-gray-100 p-5">
+      <main className="flex-1 bg-gray-100">
         {isLoading ? (
           <p>Loading...</p>
         ) : error ? (
