@@ -11,7 +11,7 @@ app.config['SECRET_KEY'] = 'secret!'
 # app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_COOKIE_SECURE'] = False # Dev only
 socketio = SocketIO(app, cors_allowed_origins=["http://localhost:3000"])
-CORS(app, supports_credentials=True)
+CORS(app, supports_credentials=True, origins=['http://localhost:3000'])
 
 db = TinyDB('db.json')
 
