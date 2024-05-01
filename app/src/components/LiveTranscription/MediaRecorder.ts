@@ -1,6 +1,7 @@
 let mediaRecorder: MediaRecorder | null = null;
 
-export const startRecording = async (onArrayBuffer) => {
+
+const startRecording = async (onArrayBuffer) => {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
   mediaRecorder = recorder;
@@ -14,9 +15,30 @@ export const startRecording = async (onArrayBuffer) => {
   recorder.start(1000);
 };
 
-export const stopRecording = () => {
+const pauseRecording = () => {
+  if (mediaRecorder) {
+    mediaRecorder.pause();
+  }
+};
+
+const resumeRecording = () => {
+  if (mediaRecorder) {
+    mediaRecorder.resume();
+  }
+};
+
+const stopRecording = () => {
   if (mediaRecorder) {
     mediaRecorder.stop();
     mediaRecorder = null;
   }
 };
+
+const Recorder = {
+  startRecording,
+  pauseRecording,
+  resumeRecording,
+  stopRecording,
+};
+
+export default Recorder;

@@ -1,55 +1,24 @@
 import React, {
-  useEffect,
   FC,
-  useState,
   Dispatch,
   SetStateAction,
 } from "react";
-import { initializeSession } from "../../api";
-import useLiveTranscriptionEvents from "./UseLiveTranscriptionEvents";
-import useRecording from "./UseRecording";
-import socket from "../../socket";
 import { Transcription } from "../../types";
 
 interface LiveTranscriptionScreenProps {
   transcription: Transcription | null;
-  setTranscription: Dispatch<SetStateAction<Transcription | null>>;
   recording: boolean;
-  setRecording: Dispatch<SetStateAction<boolean>>;
+  handleStartRecording: () => void;
+  handleStopRecording: () => void;
 }
 
 const LiveTranscriptionScreen: FC<LiveTranscriptionScreenProps> = ({
   transcription,
-  setTranscription,
   recording,
-  setRecording,
+  handleStartRecording,
+  handleStopRecording
 }) => {
-  const [clientId, setClientId] = useState("");
-  useLiveTranscriptionEvents(transcription, setTranscription);
-  const { handleStartRecording, handleStopRecording } = useRecording(
-    clientId,
-    setTranscription,
-    recording,
-    setRecording,
-  );
 
-  useEffect(() => {
-    const initializeSessionAndSetupSocket = async () => {
-      const data = await initializeSession();
-      setClientId(data.client_id);
-
-      socket.on("connect", () => {
-        console.log("Connected to server");
-      });
-
-      // Cleanup function
-      return () => {
-        socket.off("connect");
-      };
-    };
-
-    initializeSessionAndSetupSocket();
-  }, []);
 
   return (
     <div className="max-w-prose mx-auto px-4 font-serif text-xl py-20">

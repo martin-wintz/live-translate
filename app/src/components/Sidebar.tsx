@@ -2,12 +2,14 @@ import React from "react";
 import { Transcription } from "../types";
 
 interface SidebarProps {
+  selectedTranscription: Transcription | null;
   transcriptions: Transcription[]; // Type this based on your transcription data structure
   onSelectTranscription: (transcription: Transcription) => void;
   onCreateNew: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
+  selectedTranscription,
   transcriptions,
   onCreateNew,
   onSelectTranscription,
@@ -22,16 +24,20 @@ const Sidebar: React.FC<SidebarProps> = ({
       </button>
       <h2 className="text-lg mb-3">Recent Transcriptions</h2>
       <ul>
-        {transcriptions.map((transcription, index) => (
-          <li
-            key={index}
-            className="text-sm truncate cursor-pointer"
-            onClick={() => onSelectTranscription(transcription)}
-          >
-            {/* TODO: Refactor transcription timestamp to always be a Date object on the front end */}
-            {new Date(transcription.timestamp * 1000).toLocaleString()}
-          </li>
-        ))}
+        {transcriptions.map((transcription, index) => {
+          const isActive = transcription.uniqueId === selectedTranscription?.uniqueId;
+          const itemClasses = `text-sm truncate cursor-pointer ${isActive ? 'bg-blue-300' : ''}`;
+
+          return (
+            <li
+              key={index}
+              className={itemClasses}
+              onClick={() => onSelectTranscription(transcription)}
+            >
+              {new Date(transcription.timestamp * 1000).toLocaleString()}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

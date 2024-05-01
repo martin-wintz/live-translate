@@ -1,11 +1,8 @@
 import { Dispatch, SetStateAction } from "react";
-import { startRecording, stopRecording } from "../../api";
+import API from "../../api";
 import socket from "../../socket";
 import { Transcription } from "../../types";
-import {
-  startRecording as startMediaRecording,
-  stopRecording as stopMediaRecording,
-} from "./MediaRecorder";
+import Recorder from "./MediaRecorder";
 
 const useRecording = (
   clientId: string,
@@ -20,26 +17,38 @@ const useRecording = (
     });
   };
 
-  const handleStartRecording = async () => {
+  const startRecording = async () => {
     try {
-      const data = await startRecording();
+      const data = await API.startRecording();
       setTranscription(data.transcription);
-      startMediaRecording(onArrayBuffer);
+      Recorder.startRecording(onArrayBuffer);
       setRecording(true);
     } catch (error) {
       console.error("Error initializing recording", error);
     }
   };
 
-  const handleStopRecording = async () => {
+  const stopRecording = async () => {
     if (recording) {
-      stopMediaRecording();
+      Recorder.stopRecording();
       setRecording(false);
-      await stopRecording();
+      await API.stopRecording();
     }
   };
 
-  return { recording, handleStartRecording, handleStopRecording };
+  const pauseRecording = () => {
+    if (recording) {
+      Recorder.pauseRecording();
+    } 
+  };
+
+  const resumeRecording = () => {
+    if (recording) {
+      Recorder.resumeRecording();
+    }
+  }
+
+  return { recording, startRecording, stopRecording, pauseRecording, resumeRecording};
 };
 
 export default useRecording;
