@@ -14,8 +14,8 @@ from tinydb import TinyDB, Query
 
 db = TinyDB('db.json')
 
-TRANSCRIPTION_MODEL = whisper.load_model('base') # CUDA
-# TRANSCRIPTION_MODEL = whisper.load_model('tiny.en') # CPU
+# TRANSCRIPTION_MODEL = whisper.load_model('base') # CUDA
+TRANSCRIPTION_MODEL = whisper.load_model('tiny.en') # CPU
 LANGUAGE_DETECTION_MODEL = fasttext.load_model('lid.176.ftz')
 
 MIN_PHRASE_LENGTH_SECONDS = 3
@@ -24,7 +24,7 @@ PAUSE_LENGTH_THRESHOLD = 0.7
 
 
 # TODO: Automatically detect if GPU is available
-use_fp16 = True
+use_fp16 = False
 
 """Represents a phrase in a transcription.
 Attributes:

@@ -4,16 +4,15 @@ from flask_socketio import SocketIO, join_room
 from flask_cors import CORS
 import os
 from transcription import TranscriptionManager, TranscriptionProcessor
-from tinydb import TinyDB, Query
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__, static_folder='../app/build')
-app.config['SECRET_KEY'] = 'secret!'
-# app.config['SESSION_COOKIE_SAMESITE'] = 'None'
-app.config['SESSION_COOKIE_SECURE'] = False # Dev only
-socketio = SocketIO(app, cors_allowed_origins=["http://localhost:3000"])
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
+app.config['SESSION_COOKIE_SECURE'] = os.getenv('FLASK_SESSION_COOKIE_SECURE', 'False').lower() == 'true'
+socketio = SocketIO(app, cors_allowed_origins=[os.getenv('CORS_ORIGIN')])
 CORS(app, supports_credentials=True)
-
-db = TinyDB('db.json')
 
 if not os.path.exists('audio'):
     os.makedirs('audio')
@@ -87,4 +86,12 @@ def static_files(path):
     return send_from_directory(app.static_folder, path)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, port=5555)
+    socketio.run(
+        app,
+        debug=os.getenv('FLASK_DEBUG', 'False').lower() == 'true',
+        port=int(os.getenv('FLASK_PORT', 5555)),
+        ssl_context=(
+            os.getenv('SSL_CERT_PATH'),
+            os.getenv('SSL_KEY_PATH')
+        ) if os.getenv('SSL_CERT_PATH') and os.getenv('SSL_KEY_PATH') else None
+    )

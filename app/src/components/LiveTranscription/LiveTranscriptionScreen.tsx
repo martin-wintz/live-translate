@@ -21,7 +21,6 @@ const LiveTranscriptionScreen: FC = () => {
         console.log("Connected to server");
       });
 
-      // Cleanup function
       return () => {
         socket.off("connect");
       };
@@ -46,13 +45,11 @@ const LiveTranscriptionScreen: FC = () => {
               <div className="mb-4" key={index}>
                 <div className="relative">
                   <span
-                    className={`${
-                      phrase.transitioning ? "fade-out" : ""
-                    } ${phrase.translation ? "text-pink-900" : ""} ${
-                      recording && index === transcription.phrases.length - 1
+                    className={`${phrase.transitioning ? "fade-out" : ""
+                      } ${phrase.translation ? "text-pink-900" : ""} ${recording && index === transcription.phrases.length - 1
                         ? "text-gray-400"
                         : ""
-                    } transition-colors`}
+                      } transition-colors`}
                   >
                     {phrase.transcription}
                   </span>
