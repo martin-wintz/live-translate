@@ -1,6 +1,6 @@
 import React from 'react'
 import useTranscription from '../hooks/useTranscription'
-import TranscriptionPhrase from './TranscriptionPhrase'
+import AnimatedTranscription from './AnimatedTranscription'
 
 const LiveTranscriptionScreen: React.FC = () => {
   const { transcription, recording, startTranscribing, stopTranscribing } =
@@ -9,19 +9,10 @@ const LiveTranscriptionScreen: React.FC = () => {
   return (
     <div className="max-w-prose mx-auto px-4 font-serif text-xl py-20">
       <div>
-        <div className="text-gray-900">
-          {recording && transcription?.phrases.length === 0 && (
-            <span className="animate-pulse-fast">|</span>
-          )}
-          {transcription?.phrases.map((phrase, index) => (
-            <TranscriptionPhrase
-              key={index}
-              phrase={phrase}
-              isLatest={index === transcription.phrases.length - 1}
-              recording={recording}
-            />
-          ))}
-        </div>
+        <AnimatedTranscription
+          transcription={transcription}
+          recording={recording}
+        />
       </div>
       <button
         className="text-indigo-500 hover:text-indigo-700 transition-colors mt-20"

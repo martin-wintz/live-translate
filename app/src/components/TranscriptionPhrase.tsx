@@ -7,7 +7,7 @@ interface TranscriptionPhraseProps {
   recording: boolean
 }
 
-const TranscriptionPhrase: React.FC<TranscriptionPhraseProps> = ({
+const AnimatedTranscriptionPhrase: React.FC<TranscriptionPhraseProps> = ({
   phrase,
   isLatest,
   recording,
@@ -57,4 +57,4 @@ const TranscriptionPhrase: React.FC<TranscriptionPhraseProps> = ({
   )
 }
 
-export default TranscriptionPhrase
+export default AnimatedTranscriptionPhrase

@@ -208,11 +208,11 @@ class TranscriptionController:
         self.translation_callback = translation_callback
         self.audio_queue_timeout = 60  # seconds
         self.audio_queue_time_without_audio = 0
-        self.audio_queue = TranscriptionAudioQueue()
         self.translation_pool = ThreadPoolExecutor(max_workers=2)
         self.processing_audio_queue = False
 
         # Services
+        self.audio_queue = TranscriptionAudioQueue()
         self.audio_handler = AudioFileHandler(client_id, self.transcription.unique_id)
         self.transcription_service = TranscriptionService()
         self.translation_service = TranslationService()
