@@ -27,6 +27,7 @@ def handle_connect():
 
 @socketio.on('start_recording')
 def handle_start_recording():
+    print("Starting recording for client", request.sid)
     client_id = request.sid
     processor = TranscriptionProcessor(client_id, transcription_callback, translation_callback)
     processor.start_process_audio_queue()
@@ -35,6 +36,7 @@ def handle_start_recording():
 
 @socketio.on('stop_recording')
 def handle_stop_recording():
+    print("Stopping recording for client", request.sid)
     client_id = request.sid
     processor = transcription_manager.get_processor(client_id)
     if processor:
@@ -56,6 +58,15 @@ def transcription_callback(transcriptions):
 
 def translation_callback(phrase):
     socketio.emit('translation', phrase)
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print("Disconnecting client", request.sid)
+    client_id = request.sid
+    processor = transcription_manager.get_processor(client_id)
+    if processor:
+        processor.stop_process_audio_queue()
+        transcription_manager.remove_processor(client_id)
 
 # Static file serving
 @app.route('/')

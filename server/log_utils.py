@@ -1,7 +1,6 @@
 import time
 import functools
 
-
 def log_performance_decorator(log_func):
     def decorator(func):
         @functools.wraps(func)

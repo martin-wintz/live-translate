@@ -19,6 +19,7 @@ const useTranscription = () => {
   }, [])
 
   const handleTranslationMessage = (receivedPhrase: Phrase) => {
+    console.log('Received translation message:', receivedPhrase)
     setTranscription((prev) => {
       if (!prev) return prev
       const transcription = { ...prev }
@@ -37,6 +38,7 @@ const useTranscription = () => {
   }
 
   const handleTranscriptionMessage = (receivedPhrase: Phrase) => {
+    console.log('Received transcription message:', receivedPhrase)
     setTranscription((prev) => {
       if (!prev) return prev
       const transcription = { ...prev }
