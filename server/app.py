@@ -3,7 +3,7 @@ from flask import Flask, send_from_directory, request, session
 from flask_socketio import SocketIO, join_room
 from flask_cors import CORS
 import os
-from transcription import TranscriptionManager, TranscriptionProcessor
+from transcription import TranscriptionManager, TranscriptionController
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -29,43 +29,44 @@ def handle_connect():
 def handle_start_recording():
     print("Starting recording for client", request.sid)
     client_id = request.sid
-    processor = TranscriptionProcessor(client_id, transcription_callback, translation_callback)
-    processor.start_process_audio_queue()
-    transcription_manager.set_processor(client_id, processor)
-    return {'transcription': processor.transcription.serialize(), 'status': 'success'}
+
+    def transcription_callback(transcriptions):
+        socketio.emit('transcription', transcriptions, room=client_id)
+
+    def translation_callback(phrase):
+        socketio.emit('translation', phrase, room=client_id)
+
+    controller = TranscriptionController(client_id, transcription_callback, translation_callback)
+    controller.start_processing()
+    transcription_manager.set_processor(client_id, controller)
+    return {'transcription': controller.transcription.serialize(), 'status': 'success'}
 
 @socketio.on('stop_recording')
 def handle_stop_recording():
     print("Stopping recording for client", request.sid)
     client_id = request.sid
-    processor = transcription_manager.get_processor(client_id)
-    if processor:
-        processor.stop_process_audio_queue()
+    controller = transcription_manager.get_processor(client_id)
+    if controller:
+        controller.stop_processing()
         transcription_manager.remove_processor(client_id)
     return {'status': 'success'}
 
 @socketio.on('audio_chunk')
 def handle_audio_chunk(data):
     client_id = request.sid
-    processor = transcription_manager.get_processor(client_id)
-    if processor:
-        processor.queue_audio(data['arrayBuffer'])
+    controller = transcription_manager.get_processor(client_id)
+    if controller:
+        controller.queue_audio(data['arrayBuffer'])
     else:
         print(f'No processor found for client {client_id}')
-
-def transcription_callback(transcriptions):
-    socketio.emit('transcription', transcriptions)
-
-def translation_callback(phrase):
-    socketio.emit('translation', phrase)
 
 @socketio.on('disconnect')
 def handle_disconnect():
     print("Disconnecting client", request.sid)
     client_id = request.sid
-    processor = transcription_manager.get_processor(client_id)
-    if processor:
-        processor.stop_process_audio_queue()
+    controller = transcription_manager.get_processor(client_id)
+    if controller:
+        controller.stop_processing()
         transcription_manager.remove_processor(client_id)
 
 # Static file serving
