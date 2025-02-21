@@ -252,12 +252,12 @@ class TranscriptionProcessor:
         self.audio_queue_time_without_audio = 0 # seconds
         self.audio_queue = TranscriptionAudioQueue()
 
-    """Starts processing the audio queue."""
+    """Start processing the audio queue in a separate thread."""
     def start_process_audio_queue(self):
         self.thread = threading.Thread(target=self.process_audio_queue)
         self.thread.start()
 
-    """Processes the audio queue."""
+    """Processes audio chunks from the queue until the queue is empty for the timeout period."""
     def process_audio_queue(self):
         self.processing_audio_queue = True
         while self.processing_audio_queue and self.audio_queue_time_without_audio < self.audio_queue_timeout:
@@ -270,13 +270,11 @@ class TranscriptionProcessor:
                 time.sleep(0.1)
         self.stop_process_audio_queue()
 
-    """Stops processing the audio queue."""
     def stop_process_audio_queue(self):
         self.transcription.save_to_db()
         self.processing_audio_queue = False
         self.audio_queue_time_without_audio = 0
 
-    """Queues the given audio data."""
     def queue_audio(self, audio_data):
         self.audio_queue.add_audio(audio_data)
 

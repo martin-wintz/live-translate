@@ -1,45 +1,45 @@
-import { useState } from "react";
-import { startRecording, stopRecording } from "../../api";
-import socket from "../../socket";
-import { Transcription } from "../../types";
+import { useState } from 'react'
+import { startRecording, stopRecording } from '../../services/api'
+import socket from '../../socket'
+import { Transcription } from '../../types'
 import {
   startRecording as startMediaRecording,
   stopRecording as stopMediaRecording,
-} from "./MediaRecorder";
+} from '../../utils/MediaRecorder'
 
 const useRecording = (
   clientId: string,
-  setTranscription: (transcription: Transcription) => void,
+  setTranscription: (transcription: Transcription) => void
 ) => {
-  const [recording, setRecording] = useState(false);
+  const [recording, setRecording] = useState(false)
 
   const onArrayBuffer = (arrayBuffer: ArrayBuffer) => {
-    socket.emit("audio_chunk", {
+    socket.emit('audio_chunk', {
       clientId,
       arrayBuffer,
-    });
-  };
+    })
+  }
 
   const handleStartRecording = async () => {
     try {
-      const data = await startRecording();
-      setTranscription(data.transcription);
-      startMediaRecording(onArrayBuffer);
-      setRecording(true);
+      const data = await startRecording()
+      setTranscription(data.transcription)
+      startMediaRecording(onArrayBuffer)
+      setRecording(true)
     } catch (error) {
-      console.error("Error initializing recording", error);
+      console.error('Error initializing recording', error)
     }
-  };
+  }
 
   const handleStopRecording = async () => {
     if (recording) {
-      stopMediaRecording();
-      setRecording(false);
-      await stopRecording();
+      stopMediaRecording()
+      setRecording(false)
+      await stopRecording()
     }
-  };
+  }
 
-  return { recording, handleStartRecording, handleStopRecording };
-};
+  return { recording, handleStartRecording, handleStopRecording }
+}
 
-export default useRecording;
+export default useRecording

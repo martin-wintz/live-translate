@@ -10,38 +10,46 @@ load_dotenv()
 
 app = Flask(__name__, static_folder='../app/build')
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
-app.config['SESSION_COOKIE_SECURE'] = os.getenv('FLASK_SESSION_COOKIE_SECURE', 'False').lower() == 'true'
 socketio = SocketIO(app, cors_allowed_origins=[os.getenv('CORS_ORIGIN')])
-CORS(app, supports_credentials=True)
+CORS(app)
 
 if not os.path.exists('audio'):
     os.makedirs('audio')
 
-transcription = None
 transcription_manager = TranscriptionManager()
 
-# ----------------- Socket.io -----------------
 @socketio.on('connect')
 def handle_connect():
-    print(f'Client connected: {request.sid}')
+    client_id = str(uuid.uuid4())
     join_room(request.sid)
+    print(f"Client connected: {client_id}")
+    return {'client_id': client_id}
 
-@socketio.on('disconnect')
-def handle_disconnect():
+@socketio.on('start_recording')
+def handle_start_recording():
     client_id = request.sid
-    print(f'Client disconnected: {client_id}')
+    processor = TranscriptionProcessor(client_id, transcription_callback, translation_callback)
+    processor.start_process_audio_queue()
+    transcription_manager.set_processor(client_id, processor)
+    return {'transcription': processor.transcription.serialize(), 'status': 'success'}
+
+@socketio.on('stop_recording')
+def handle_stop_recording():
+    client_id = request.sid
+    processor = transcription_manager.get_processor(client_id)
+    if processor:
+        processor.stop_process_audio_queue()
+        transcription_manager.remove_processor(client_id)
+    return {'status': 'success'}
 
 @socketio.on('audio_chunk')
 def handle_audio_chunk(data):
-    client_id = data['clientId']
-    audio_data = data['arrayBuffer']
-
+    client_id = request.sid
     processor = transcription_manager.get_processor(client_id)
     if processor:
-        processor.queue_audio(audio_data)
+        processor.queue_audio(data['arrayBuffer'])
     else:
         print(f'No processor found for client {client_id}')
-        pass
 
 def transcription_callback(transcriptions):
     socketio.emit('transcription', transcriptions)
@@ -49,34 +57,7 @@ def transcription_callback(transcriptions):
 def translation_callback(phrase):
     socketio.emit('translation', phrase)
 
-# ----------------- API -----------------
-@app.route('/start_recording', methods=['POST'])
-def start_recording():
-    processor = TranscriptionProcessor(session['client_id'], transcription_callback, translation_callback)
-    processor.start_process_audio_queue()
-    transcription_manager.set_processor(session['client_id'], processor)
-    return {'transcription': processor.transcription.serialize(), 'status': 'success'}
-
-@app.route('/stop_recording', methods=['POST'])
-def stop_recording():
-    processor = transcription_manager.get_processor(session['client_id'])
-    if processor is not None:
-        processor.stop_process_audio_queue()
-        processor = None
-    return {'status': 'success'}
-
-@app.route('/transcriptions', methods=['GET'])
-def get_transcriptions():
-    transcriptions = transcription_manager.get_transcriptions_dict(session['client_id'])
-    return {'transcriptions': transcriptions}
-
-@app.route('/init_session', methods=['POST'])
-def init_session():
-    # Generate a random client id and store it in the session
-    if 'client_id' not in session:
-        session['client_id'] = str(uuid.uuid4())
-    return {'client_id': session['client_id']}
-
+# Static file serving
 @app.route('/')
 def index():
     return send_from_directory(app.static_folder, 'index.html')
@@ -86,8 +67,7 @@ def static_files(path):
     return send_from_directory(app.static_folder, path)
 
 if __name__ == '__main__':
-    socketio.run(
-        app,
+    socketio.run(app, 
         debug=os.getenv('FLASK_DEBUG', 'False').lower() == 'true',
         port=int(os.getenv('FLASK_PORT', 5555)),
         ssl_context=(
