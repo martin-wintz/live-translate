@@ -178,7 +178,26 @@ class TranscriptionAudioQueue:
 
     def clear(self):
         self.queue = Queue()
-        
+
+""" Thread safe manager for transcription processors. """
+class TranscriptionManager:
+    def __init__(self):
+        self.controllers = {}
+        self.lock = threading.Lock()
+
+    def get_controller(self, client_id):
+        with self.lock:
+            return self.controllers.get(client_id)
+
+    def set_controller(self, client_id, controller):
+        with self.lock:
+            self.controllers[client_id] = controller
+
+    def remove_controller(self, client_id):
+        with self.lock:
+            if client_id in self.controllers:
+                del self.controllers[client_id]
+
 
 """Main class that orchestrates the transcription and translation of a transcription in a separate thread."""
 class TranscriptionController:

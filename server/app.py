@@ -38,36 +38,36 @@ def handle_start_recording():
 
     controller = TranscriptionController(client_id, transcription_callback, translation_callback)
     controller.start_processing()
-    transcription_manager.set_processor(client_id, controller)
+    transcription_manager.set_controller(client_id, controller)
     return {'transcription': controller.transcription.serialize(), 'status': 'success'}
 
 @socketio.on('stop_recording')
 def handle_stop_recording():
     print("Stopping recording for client", request.sid)
     client_id = request.sid
-    controller = transcription_manager.get_processor(client_id)
+    controller = transcription_manager.get_controller(client_id)
     if controller:
         controller.stop_processing()
-        transcription_manager.remove_processor(client_id)
+        transcription_manager.remove_controller(client_id)
     return {'status': 'success'}
 
 @socketio.on('audio_chunk')
 def handle_audio_chunk(data):
     client_id = request.sid
-    controller = transcription_manager.get_processor(client_id)
+    controller = transcription_manager.get_controller(client_id)
     if controller:
         controller.queue_audio(data['arrayBuffer'])
     else:
-        print(f'No processor found for client {client_id}')
+        print(f'No controller found for client {client_id}')
 
 @socketio.on('disconnect')
 def handle_disconnect():
     print("Disconnecting client", request.sid)
     client_id = request.sid
-    controller = transcription_manager.get_processor(client_id)
+    controller = transcription_manager.get_controller(client_id)
     if controller:
         controller.stop_processing()
-        transcription_manager.remove_processor(client_id)
+        transcription_manager.remove_controller(client_id)
 
 # Static file serving
 @app.route('/')
