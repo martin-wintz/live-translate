@@ -12,7 +12,7 @@ const AnimatedTranscription: React.FC<AnimatedTranscriptionProps> = ({
   recording,
 }) => {
   return (
-    <div className="text-gray-900">
+    <div className="text-gray-900 text-sm font-normal font-lexend">
       {recording && transcription?.phrases.length === 0 && (
         <span className="animate-pulse-fast">|</span>
       )}

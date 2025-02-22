@@ -34,7 +34,7 @@ const AnimatedTranscriptionPhrase: React.FC<TranscriptionPhraseProps> = ({
         <span
           className={`
             ${transitioning ? 'animate-fade-out' : ''}
-            ${phrase.translation ? 'text-pink-900' : ''}
+            ${phrase.translation ? 'text-emerald-900' : ''}
             ${recording && isLatest ? 'text-gray-400' : ''}
             transition-colors
           `}
@@ -49,7 +49,7 @@ const AnimatedTranscriptionPhrase: React.FC<TranscriptionPhraseProps> = ({
         )}
       </div>
       {phrase.translation && (
-        <div className="mb-6 text-pink-600 animate-fade-in">
+        <div className="mb-6 text-emerald-600 animate-fade-in">
           {phrase.translation}
         </div>
       )}
