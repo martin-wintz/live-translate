@@ -23,7 +23,7 @@ warnings.filterwarnings('ignore', category=FutureWarning, module='whisper')
 print(f"CUDA available: {torch.cuda.is_available()}")
 if torch.cuda.is_available():
     print(f"Using GPU: {torch.cuda.get_device_name()}")
-    TRANSCRIPTION_MODEL = whisper.load_model('base').cuda()  # CUDA
+    TRANSCRIPTION_MODEL = whisper.load_model('turbo').cuda()  # CUDA
     use_fp16 = True
 else:
     print("Using CPU with tiny.en model. Translation feature won't work.")

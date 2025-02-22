@@ -10,7 +10,7 @@ load_dotenv()
 
 app = Flask(__name__, static_folder='../app/build')
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
-socketio = SocketIO(app, cors_allowed_origins=[os.getenv('CORS_ORIGIN')])
+socketio = SocketIO(app, cors_allowed_origins=os.getenv('CORS_ORIGIN').split(','))
 CORS(app)
 
 if not os.path.exists('audio'):
@@ -69,7 +69,7 @@ def handle_disconnect():
         controller.stop_processing()
         transcription_manager.remove_controller(client_id)
 
-# Static file serving
+# Serve the React app
 @app.route('/')
 def index():
     return send_from_directory(app.static_folder, 'index.html')

@@ -56,11 +56,27 @@ const useTranscription = () => {
 
   const startTranscribing = async () => {
     try {
+      const micAccessPromise = navigator.mediaDevices.getUserMedia({
+        audio: true,
+      })
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Microphone access timeout')), 10000)
+      })
+
+      // Wait for either microphone access or timeout
+      await Promise.race([micAccessPromise, timeoutPromise]).catch((error) => {
+        alert(
+          'Could not access microphone. Please check your permissions and try again.'
+        )
+        throw error
+      })
+
       const { transcription: newTranscription } = await new Promise<{
         transcription: Transcription
       }>((resolve) => {
         socket.emit('start_recording', resolve)
       })
+
       setTranscription(newTranscription)
       startRecording(onArrayBuffer)
       setRecording(true)
